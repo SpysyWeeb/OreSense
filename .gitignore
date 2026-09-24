@@ -1,0 +1,22 @@
+# gradle
+build/
+.gradle/
+mcmodsrepo/
+
+# ide
+.idea/
+*.iml
+*.ipr
+*.iws
+.settings/
+.classpath
+.project
+bin/
+out/
+*.launch
+eclipse/
+
+# runs
+run/
+run-data/
+logs/

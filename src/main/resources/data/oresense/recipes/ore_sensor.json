@@ -1,0 +1,11 @@
+{
+  "type": "minecraft:crafting_shaped",
+  "category": "equipment",
+  "pattern": [ "GAG", "AIA", "GAG" ],
+  "key": {
+    "G": { "tag": "forge:ingots/gold" },
+    "A": { "item": "minecraft:amethyst_shard" },
+    "I": { "tag": "forge:ingots/iron" }
+  },
+  "result": { "item": "oresense:ore_sensor" }
+}
