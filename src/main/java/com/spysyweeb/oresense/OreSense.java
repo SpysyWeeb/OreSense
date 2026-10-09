@@ -10,7 +10,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.resource.v1.ResourceLoader;
-import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerType;
+import net.fabricmc.fabric.api.menu.v1.ExtendedMenuType;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
@@ -19,7 +19,7 @@ import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.CreativeModeTabs;
-import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
+import net.fabricmc.fabric.api.creativetab.v1.CreativeModeTabEvents;
 import net.minecraft.world.item.Item;
 
 public class OreSense implements ModInitializer {
@@ -31,14 +31,14 @@ public class OreSense implements ModInitializer {
 
     public static final MenuType<OreSensorMenu> ORE_SENSOR_MENU =
             Registry.register(BuiltInRegistries.MENU, Identifier.fromNamespaceAndPath(MODID, "ore_sensor"),
-                    new ExtendedScreenHandlerType<>(OreSensorMenu::new, OreSensorMenu.HAND_CODEC));
+                    new ExtendedMenuType<>(OreSensorMenu::new, OreSensorMenu.HAND_CODEC));
 
     @Override
     public void onInitialize() {
         Config.load();
-        ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.TOOLS_AND_UTILITIES).register(entries -> entries.accept(ORE_SENSOR));
+        CreativeModeTabEvents.modifyOutputEvent(CreativeModeTabs.TOOLS_AND_UTILITIES).register(entries -> entries.accept(ORE_SENSOR));
         OreSenseNetwork.register();
-        ResourceLoader.get(PackType.SERVER_DATA).registerReloader(Identifier.fromNamespaceAndPath(MODID, SampleAliases.DIRECTORY), new SampleAliases());
+        ResourceLoader.get(PackType.SERVER_DATA).registerReloadListener(Identifier.fromNamespaceAndPath(MODID, SampleAliases.DIRECTORY), new SampleAliases());
         ServerLifecycleEvents.START_DATA_PACK_RELOAD.register((server, resources) -> SampleResolver.invalidate());
         ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resources, success) -> {
             if (success) {
