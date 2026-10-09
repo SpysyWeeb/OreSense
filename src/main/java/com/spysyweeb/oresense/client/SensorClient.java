@@ -10,6 +10,7 @@ import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
@@ -86,7 +87,8 @@ public class SensorClient {
     }
 
     private static ModelResourceLocation layer(String name) {
-        return new ModelResourceLocation(OreSense.MODID, name, "inventory");
+        // Additional models use their full model-file path in Minecraft 1.21.
+        return ModelResourceLocation.inventory(ResourceLocation.fromNamespaceAndPath(OreSense.MODID, "item/" + name));
     }
 
     private static ModelResourceLocation[] numbered(String prefix, int count) {
@@ -153,7 +155,7 @@ public class SensorClient {
 
             double dx = (target.getX() + 0.5) - player.getX();
             double dz = (target.getZ() + 0.5) - player.getZ();
-            double facing = Math.toRadians(player.getViewYRot(mc.getPartialTick()) + 90.0);
+            double facing = Math.toRadians(player.getViewYRot(mc.getTimer().getGameTimeDeltaPartialTick(true)) + 90.0);
             want = wrap((Math.atan2(dz, dx) - facing) / (Math.PI * 2.0));
 
             int sign = Signal.verticalSign(target.getY() - player.blockPosition().getY());
@@ -176,7 +178,7 @@ public class SensorClient {
         if (state != State.DORMANT) {
             // the shortest way from the last step's start to its end (the step is |delta| < 0.5)
             double step = wrap(rotation - prevRotation + 0.5) - 0.5;
-            angle = (float) wrap(prevRotation + mc.getPartialTick() * step);
+            angle = (float) wrap(prevRotation + mc.getTimer().getGameTimeDeltaPartialTick(true) * step);
         }
         return new Reading(state, angle, vertical, sample, lost, paid, closeness, charges);
     }

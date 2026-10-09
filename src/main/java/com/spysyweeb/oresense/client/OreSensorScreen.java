@@ -12,7 +12,7 @@ import net.minecraft.world.inventory.Slot;
 public class OreSensorScreen extends AbstractContainerScreen<OreSensorMenu> {
     // the hopper layout with only the charge and sample slots (tools/gen_textures.py), on the
     // 256x256 canvas that the short blit form below assumes
-    private static final ResourceLocation TEXTURE = new ResourceLocation(OreSense.MODID, "textures/gui/ore_sensor.png");
+    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(OreSense.MODID, "textures/gui/ore_sensor.png");
     // each slot's name, left of it in vanilla's label style (AbstractContainerScreen.renderLabels
     // draws the title and "Inventory" in 0x404040 without a shadow)
     private static final Component CHARGES_LABEL = Component.translatable("oresense.gui.charges");

@@ -266,14 +266,13 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
                         Float.intBitsToFloat(v[o + IQuadTransformer.POSITION + 1]) - 0.5f,
                         Float.intBitsToFloat(v[o + IQuadTransformer.POSITION + 2]) - 0.5f, p);
                 int c = v[o + IQuadTransformer.COLOR];  // R,G,B,A bytes, R in the low byte
-                vc.vertex(dial.pose(), p.x(), p.y(), p.z() * DECAL_DEPTH)  // pressed onto the socket
-                        .color(r * (c & 255) / 255f, g * (c >> 8 & 255) / 255f, b * (c >> 16 & 255) / 255f, 1f)
-                        .uv(Float.intBitsToFloat(v[o + IQuadTransformer.UV0]),
+                vc.addVertex(dial.pose(), p.x(), p.y(), p.z() * DECAL_DEPTH)  // pressed onto the socket
+                        .setColor(r * (c & 255) / 255f, g * (c >> 8 & 255) / 255f, b * (c >> 16 & 255) / 255f, 1f)
+                        .setUv(Float.intBitsToFloat(v[o + IQuadTransformer.UV0]),
                             Float.intBitsToFloat(v[o + IQuadTransformer.UV0 + 1]))
-                        .overlayCoords(overlay)
-                        .uv2(light)
-                        .normal(dial, 0f, 0f, 1f)
-                        .endVertex();
+                        .setOverlay(overlay)
+                        .setLight(light)
+                        .setNormal(dial, 0f, 0f, 1f);
             }
         }
     }
