@@ -2,10 +2,12 @@
 
 ## 1.0.2 — 2026-10-09
 
-- Added Minecraft 1.21.11 support with Fabric Loader and Fabric API.
+- Added Minecraft 26.1.1 support with Fabric Loader and Fabric API.
+- Updated to Java 25 and unobfuscated Minecraft builds.
 - Adapted the animated dial and flat sample display to the new rendering system.
 - Preserved stored samples and charge when upgrading worlds to the new item component format.
-- Added support for modern Fabric common material tags.
+- Updated menus, networking, resource reloads, and creative tabs to the renamed Fabric APIs.
+- Kept modern common material tags and legacy saved-sample migration compatible.
 
 - Renamed the sensor menu's Ore slot to Sample to reflect that it also accepts ore drops and items made
   from them.

@@ -4,7 +4,7 @@ import net.minecraft.world.entity.player.Inventory;
 
 import net.minecraft.world.inventory.AbstractContainerMenu;
 
-import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;
+import net.fabricmc.fabric.api.menu.v1.ExtendedMenuProvider;
 
 import com.spysyweeb.oresense.menu.OreSensorMenu;
 import com.spysyweeb.oresense.scan.KnownSamples;
@@ -264,7 +264,7 @@ public class OreSensorItem extends Item {
             return InteractionResult.SUCCESS;
         }
         if (!level.isClientSide() && player instanceof ServerPlayer serverPlayer) {
-            serverPlayer.openMenu(new ExtendedScreenHandlerFactory<InteractionHand>() {
+            serverPlayer.openMenu(new ExtendedMenuProvider<InteractionHand>() {
                 @Override
                 public InteractionHand getScreenOpeningData(ServerPlayer openingPlayer) {
                     return hand;
@@ -658,7 +658,7 @@ public class OreSensorItem extends Item {
         } else {
             line = Component.translatable("oresense.msg.reading", strength, count);
         }
-        player.displayClientMessage(line.copy().withStyle(ChatFormatting.AQUA), true);
+        player.sendOverlayMessage(line.copy().withStyle(ChatFormatting.AQUA));
     }
 
     @Override

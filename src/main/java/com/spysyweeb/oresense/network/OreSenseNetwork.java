@@ -1,7 +1,7 @@
 package com.spysyweeb.oresense.network;
 
 import com.spysyweeb.oresense.OreSense;
-import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.networking.v1.FriendlyByteBufs;
 import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerLoginConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerLoginNetworking;
@@ -19,7 +19,7 @@ public final class OreSenseNetwork {
     private OreSenseNetwork() {}
 
     public static void register() {
-        PayloadTypeRegistry.playS2C().register(KnownSamplesPacket.TYPE, KnownSamplesPacket.STREAM_CODEC);
+        PayloadTypeRegistry.clientboundPlay().register(KnownSamplesPacket.TYPE, KnownSamplesPacket.STREAM_CODEC);
         ServerLoginConnectionEvents.QUERY_START.register((handler, server, sender, synchronizer) ->
                 sender.sendPacket(HANDSHAKE, protocolPacket()));
         ServerLoginNetworking.registerGlobalReceiver(HANDSHAKE,
@@ -32,7 +32,7 @@ public final class OreSenseNetwork {
     }
 
     static FriendlyByteBuf protocolPacket() {
-        FriendlyByteBuf buf = PacketByteBufs.create();
+        FriendlyByteBuf buf = FriendlyByteBufs.create();
         buf.writeVarInt(PROTOCOL);
         return buf;
     }
