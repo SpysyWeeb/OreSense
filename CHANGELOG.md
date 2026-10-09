@@ -2,6 +2,9 @@
 
 ## 1.0.2 — 2026-10-09
 
+- Added Minecraft 1.21.5 support for NeoForge 21.5.98 with Java 21.
+- Adapted NeoForge registration, networking, rendering, and common ore/ingredient tags while preserving sensor behavior and artwork.
+
 - Added Minecraft 1.21.5 support for Forge 55.1.0 with Java 21.
 - Updated item-model rendering, recipes and data storage for Minecraft 1.21.5 while preserving the animated dial and saved sensors.
 
