@@ -1,5 +1,9 @@
 # Changelog
 
+## NeoForge 1.20.1
+
+- Added NeoForge 47.1.106 support for Minecraft 1.20.1.
+
 ## 1.0.2 — 2026-10-09
 
 - Renamed the sensor menu's Ore slot to Sample to reflect that it also accepts ore drops and items made

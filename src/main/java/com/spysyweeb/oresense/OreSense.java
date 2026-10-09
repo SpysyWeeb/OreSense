@@ -92,7 +92,7 @@ public class OreSense {
         KnownSamplesPacket packet = new KnownSamplesPacket(
                 SampleResolver.knownSamples(event.getPlayerList().getServer().overworld()),
                 !Config.INSTANCE.oresOnly.get());
-        for (ServerPlayer player : event.getPlayers()) {
+        for (ServerPlayer player : event.getPlayerList().getPlayers()) {
             OreSenseNetwork.send(player, packet);
         }
     }
