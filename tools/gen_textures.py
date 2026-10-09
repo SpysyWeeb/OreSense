@@ -450,9 +450,12 @@ def update_item_model():
     path = MODELS / "ore_sensor.json"
     display = json.loads(path.read_text())["display"]
     write_json(path, {
-        "parent": "builtin/entity",
+        "parent": "minecraft:item/generated",
         "gui_light": "front",
-        "textures": {"particle": "oresense:item/ore_sensor_base"},
+        "textures": {
+            "particle": "oresense:item/ore_sensor_base",
+            "layer0": "oresense:item/ore_sensor_base",
+        },
         "display": display,
     })
 
