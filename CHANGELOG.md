@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.2 — 2026-10-09
+
+- Renamed the sensor menu's Ore slot to Sample to reflect that it also accepts ore drops and items made
+  from them.
+- Updated the empty sensor tooltip and instructions to use the same sample terminology.
+
 ## 1.0.1 — 2026-10-08
 
 - Ported to Minecraft 1.19.2 with Forge 43.5.2.
