@@ -7,9 +7,9 @@
     "GAG"
   ],
   "key": {
-    "G": "#forge:ingots/gold",
+    "G": "#c:ingots/gold",
     "A": "minecraft:amethyst_shard",
-    "I": "#forge:ingots/iron"
+    "I": "#c:ingots/iron"
   },
   "result": {
     "id": "oresense:ore_sensor"
