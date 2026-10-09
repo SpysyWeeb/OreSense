@@ -1,7 +1,6 @@
 package com.spysyweeb.oresense.scan;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.RegistryAccess;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
@@ -18,6 +17,8 @@ import net.minecraft.world.item.crafting.Recipe;
 import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.item.crafting.display.RecipeDisplay;
+import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.loot.LootParams;
@@ -102,7 +103,7 @@ public final class SampleResolver {
     }
 
     private static Map<Item, Set<Block>> byProduct(ServerLevel level) {
-        RecipeManager recipes = level.getRecipeManager();
+        RecipeManager recipes = level.getServer().getRecipeManager();
         ReloadableServerRegistries.Holder loot = level.getServer().reloadableRegistries();
         if (itemToOres != null && builtRecipes == recipes && builtLoot == loot) return itemToOres;
 
@@ -134,10 +135,14 @@ public final class SampleResolver {
 
         // material links from the server's recipes: item -> the items made purely of it
         Map<Item, Set<Item>> links = new HashMap<>();
-        RegistryAccess access = level.registryAccess();
-        linkCooking(recipes.getAllRecipesFor(RecipeType.SMELTING), access, links);
-        linkCooking(recipes.getAllRecipesFor(RecipeType.BLASTING), access, links);
-        linkCrafting(recipes.getAllRecipesFor(RecipeType.CRAFTING), access, links);
+        for (RecipeHolder<?> holder : recipes.getRecipes()) {
+            Recipe<?> recipe = holder.value();
+            if (recipe.getType() == RecipeType.SMELTING || recipe.getType() == RecipeType.BLASTING) {
+                linkCooking(recipe, level, links);
+            } else if (recipe.getType() == RecipeType.CRAFTING) {
+                linkCrafting(recipe, level, links);
+            }
+        }
 
         // carry the ores along the links until nothing changes; a pass that changes something
         // adds at least one (item, ore) pair and there are finitely many, so this ends
@@ -177,17 +182,16 @@ public final class SampleResolver {
      * Smelting and blasting: the ingredient becomes the result. One way only, so smelting an
      * iron pickaxe into nuggets never makes the pickaxe a sample.
      */
-    private static void linkCooking(List<? extends RecipeHolder<? extends Recipe<?>>> recipes, RegistryAccess access, Map<Item, Set<Item>> links) {
-        for (RecipeHolder<? extends Recipe<?>> holder : recipes) {
-            Recipe<?> recipe = holder.value();
-            try {
-                ItemStack result = recipe.getResultItem(access);
-                List<Ingredient> ingredients = recipe.getIngredients();
-                if (result.isEmpty() || ingredients.isEmpty()) continue;
-                for (Item from : accepted(ingredients.get(0))) link(links, from, result.getItem());
-            } catch (Exception e) {
-                // a mod's recipe may not be readable outside its machine; skip it
+    private static void linkCooking(Recipe<?> recipe, ServerLevel level, Map<Item, Set<Item>> links) {
+        try {
+            List<Ingredient> ingredients = recipe.placementInfo().ingredients();
+            if (ingredients.size() != 1) return;
+            Set<Item> results = results(recipe, level);
+            for (Item from : accepted(ingredients.getFirst())) {
+                for (Item result : results) link(links, from, result);
             }
+        } catch (Exception e) {
+            // A mod's recipe may not expose its ingredients or display outside its machine.
         }
     }
 
@@ -199,31 +203,35 @@ public final class SampleResolver {
      * with two sources from joining them; blue dye comes from lapis and from cornflowers, so a
      * cornflower must not find lapis ore. Recipes that mix materials link nothing.
      */
-    private static void linkCrafting(List<? extends RecipeHolder<? extends Recipe<?>>> recipes, RegistryAccess access, Map<Item, Set<Item>> links) {
-        for (RecipeHolder<? extends Recipe<?>> holder : recipes) {
-            Recipe<?> recipe = holder.value();
-            try {
-                if (recipe.isSpecial()) continue;
-                ItemStack result = recipe.getResultItem(access);
-                if (result.isEmpty()) continue;
-                Set<Item> material = null;
-                boolean pure = true;
-                for (Ingredient ingredient : recipe.getIngredients()) {
-                    if (ingredient.isEmpty()) continue;   // a blank cell of a shaped recipe
-                    Set<Item> accepted = accepted(ingredient);
-                    if (material == null) {
-                        material = accepted;
-                    } else if (!material.equals(accepted)) {
-                        pure = false;
-                        break;
-                    }
-                }
-                if (!pure || material == null) continue;
-                for (Item item : material) link(links, item, result.getItem());
-            } catch (Exception e) {
-                // a mod's recipe may not be readable outside a crafting grid; skip it
+    private static void linkCrafting(Recipe<?> recipe, ServerLevel level, Map<Item, Set<Item>> links) {
+        try {
+            if (recipe.isSpecial()) return;
+            Set<Item> material = null;
+            // PlacementInfo contains occupied ingredients only, without blank shaped cells.
+            for (Ingredient ingredient : recipe.placementInfo().ingredients()) {
+                Set<Item> accepted = accepted(ingredient);
+                if (accepted.isEmpty()) return;
+                if (material == null) material = accepted;
+                else if (!material.equals(accepted)) return;
+            }
+            if (material == null) return;
+            for (Item result : results(recipe, level)) {
+                for (Item item : material) link(links, item, result);
+            }
+        } catch (Exception e) {
+            // A mod's recipe may not expose its ingredients or display outside a crafting grid.
+        }
+    }
+
+    /** Server recipe displays replace the removed getResultItem API, without guessing inputs. */
+    private static Set<Item> results(Recipe<?> recipe, ServerLevel level) {
+        Set<Item> items = new HashSet<>();
+        for (RecipeDisplay display : recipe.display()) {
+            for (ItemStack stack : display.result().resolveForStacks(SlotDisplayContext.fromLevel(level))) {
+                if (!stack.isEmpty() && stack.getItem() != Items.BARRIER) items.add(stack.getItem());
             }
         }
+        return items;
     }
 
     /**
@@ -232,8 +240,9 @@ public final class SampleResolver {
      */
     private static Set<Item> accepted(Ingredient ingredient) {
         Set<Item> items = new HashSet<>();
-        for (ItemStack stack : ingredient.getItems()) {
-            if (!stack.isEmpty() && stack.getItem() != Items.BARRIER) items.add(stack.getItem());
+        for (var holder : ingredient.items().toList()) {
+            Item item = holder.value();
+            if (item != Items.AIR && item != Items.BARRIER) items.add(item);
         }
         return items;
     }

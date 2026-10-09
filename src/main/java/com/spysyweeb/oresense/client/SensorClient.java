@@ -4,16 +4,17 @@ import com.spysyweeb.oresense.Config;
 import com.spysyweeb.oresense.OreSense;
 import com.spysyweeb.oresense.OreSensorItem;
 import com.spysyweeb.oresense.scan.Signal;
-import net.fabricmc.fabric.api.client.model.loading.v1.ModelLoadingPlugin;
-import net.fabricmc.fabric.api.client.rendering.v1.BuiltinItemRendererRegistry;
-import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.world.item.ItemDisplayContext;
-import net.minecraft.resources.ResourceLocation;
+import java.util.ArrayList;
+import java.util.List;
+import net.minecraft.client.renderer.item.ItemModels;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
+import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.Locale;
@@ -82,6 +83,7 @@ public class SensorClient {
     }
 
     private static ResourceLocation layer(String name) {
+        // Additional models use their full model-file path in Minecraft 1.21.
         return ResourceLocation.fromNamespaceAndPath(OreSense.MODID, "item/" + name);
     }
 
@@ -91,23 +93,22 @@ public class SensorClient {
         return models;
     }
 
-    public static void registerModels() {
-        ModelLoadingPlugin.register(context -> {
-            context.addModels(BASE);
-            context.addModels(LAMP_UP);
-            context.addModels(LAMP_DOWN);
-            context.addModels(EMPTY);
-            for (ResourceLocation frame : NEEDLE) context.addModels(frame);
-            for (ResourceLocation frame : TAIL) context.addModels(frame);
-            for (ResourceLocation ring : SONAR) context.addModels(ring);
-            for (ResourceLocation cell : CHARGE) context.addModels(cell);
-        });
+    public static List<ResourceLocation> layers() {
+        List<ResourceLocation> layers = new ArrayList<>(List.of(BASE, LAMP_UP, LAMP_DOWN, EMPTY));
+        layers.addAll(List.of(NEEDLE));
+        layers.addAll(List.of(TAIL));
+        layers.addAll(List.of(SONAR));
+        layers.addAll(List.of(CHARGE));
+        return layers;
+    }
+
+    /** Initial resource parsing runs before FMLClientSetupEvent. */
+    public static void registerItemModelType() {
+        ItemModels.ID_MAPPER.put(ResourceLocation.fromNamespaceAndPath(OreSense.MODID, "sensor"), SensorItemModel.Unbaked.CODEC);
     }
 
     public static void onClientSetup() {
         MenuScreens.register(OreSense.ORE_SENSOR_MENU, OreSensorScreen::new);
-        BuiltinItemRendererRegistry.DynamicItemRenderer renderer = SensorRenderer.get()::renderByItem;
-        BuiltinItemRendererRegistry.INSTANCE.register(OreSense.ORE_SENSOR, renderer);
     }
 
     /** Works out what this stack's dial shows right now, easing the needle toward the live reading. */
@@ -151,7 +152,7 @@ public class SensorClient {
 
             double dx = (target.getX() + 0.5) - player.getX();
             double dz = (target.getZ() + 0.5) - player.getZ();
-            double facing = Math.toRadians(player.getViewYRot(mc.getTimer().getGameTimeDeltaPartialTick(true)) + 90.0);
+            double facing = Math.toRadians(player.getViewYRot(mc.getDeltaTracker().getGameTimeDeltaPartialTick(true)) + 90.0);
             want = wrap((Math.atan2(dz, dx) - facing) / (Math.PI * 2.0));
 
             int sign = Signal.verticalSign(target.getY() - player.blockPosition().getY());
@@ -174,7 +175,7 @@ public class SensorClient {
         if (state != State.DORMANT) {
             // the shortest way from the last step's start to its end (the step is |delta| < 0.5)
             double step = wrap(rotation - prevRotation + 0.5) - 0.5;
-            angle = (float) wrap(prevRotation + mc.getTimer().getGameTimeDeltaPartialTick(true) * step);
+            angle = (float) wrap(prevRotation + mc.getDeltaTracker().getGameTimeDeltaPartialTick(true) * step);
         }
         return new Reading(state, angle, vertical, sample, lost, paid, closeness, charges);
     }
