@@ -2,8 +2,8 @@
 
 ## 1.0.2 — 2026-10-09
 
-- Added Minecraft 1.21.11 support for Forge 61.2.0 with Java 21.
-- Updated rendering and data-pack paths for Minecraft 1.21.11 while preserving the animated dial and saved sensors.
+- Added Minecraft 26.1.1 support for Forge 63.0.2 with Java 25.
+- Updated rendering and data-pack paths for Minecraft 26.1.1 while preserving the animated dial and saved sensors.
 
 - Renamed the sensor menu's Ore slot to Sample to reflect that it also accepts ore drops and items made
   from them.

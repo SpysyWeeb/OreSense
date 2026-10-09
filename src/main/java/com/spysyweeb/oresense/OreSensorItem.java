@@ -642,7 +642,7 @@ public class OreSensorItem extends Item {
         } else {
             line = Component.translatable("oresense.msg.reading", strength, count);
         }
-        player.displayClientMessage(line.copy().withStyle(ChatFormatting.AQUA), true);
+        player.sendOverlayMessage(line.copy().withStyle(ChatFormatting.AQUA));
     }
 
     @Override
