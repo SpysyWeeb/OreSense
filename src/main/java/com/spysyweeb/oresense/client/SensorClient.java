@@ -5,7 +5,6 @@ import com.spysyweeb.oresense.OreSense;
 import com.spysyweeb.oresense.OreSensorItem;
 import com.spysyweeb.oresense.scan.Signal;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.resources.model.ModelResourceLocation;
@@ -13,15 +12,15 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ModelEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.ModelEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 
 import java.util.Locale;
 
-@Mod.EventBusSubscriber(modid = OreSense.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+@EventBusSubscriber(modid = OreSense.MODID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public class SensorClient {
     public static final int SONAR_RINGS = 3;
     /** Charge gauge cells under the window, 16 shards each: cell 0 is the left end, the gauge fills to the right. */
@@ -108,8 +107,8 @@ public class SensorClient {
     }
 
     @SubscribeEvent
-    public static void onClientSetup(FMLClientSetupEvent event) {
-        event.enqueueWork(() -> MenuScreens.register(OreSense.ORE_SENSOR_MENU.get(), OreSensorScreen::new));
+    public static void registerScreens(RegisterMenuScreensEvent event) {
+        event.register(OreSense.ORE_SENSOR_MENU.get(), OreSensorScreen::new);
     }
 
     /** Works out what this stack's dial shows right now, easing the needle toward the live reading. */

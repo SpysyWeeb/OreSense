@@ -439,7 +439,7 @@ public class OreSensorItem extends Item {
     // ---- charging ----
 
     /**
-     * The player broke a block (Forge's BreakEvent, server side). Every sensor they carry in
+     * The player broke a block (NeoForge's BreakEvent, server side). Every sensor they carry in
      * the 36 main slots or the off hand whose unpaid lock holds that block spends its charge;
      * the lock stays, paid, on the rest of the vein. Creative players pay nothing. A lock with
      * no charge left to spend is let go instead.
@@ -673,8 +673,8 @@ public class OreSensorItem extends Item {
 
     /** Hands rendering to our own renderer so the sample ore can sit on the dial. */
     @Override
-    public void initializeClient(Consumer<net.minecraftforge.client.extensions.common.IClientItemExtensions> consumer) {
-        consumer.accept(new net.minecraftforge.client.extensions.common.IClientItemExtensions() {
+    public void initializeClient(Consumer<net.neoforged.neoforge.client.extensions.common.IClientItemExtensions> consumer) {
+        consumer.accept(new net.neoforged.neoforge.client.extensions.common.IClientItemExtensions() {
             @Override
             public net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer getCustomRenderer() {
                 return com.spysyweeb.oresense.client.SensorRenderer.get();
