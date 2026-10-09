@@ -9,7 +9,7 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
-import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
+import net.fabricmc.fabric.api.resource.v1.ResourceLoader;
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerType;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
@@ -38,7 +38,7 @@ public class OreSense implements ModInitializer {
         Config.load();
         ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.TOOLS_AND_UTILITIES).register(entries -> entries.accept(ORE_SENSOR));
         OreSenseNetwork.register();
-        ResourceManagerHelper.get(PackType.SERVER_DATA).registerReloadListener(new SampleAliases());
+        ResourceLoader.get(PackType.SERVER_DATA).registerReloader(ResourceLocation.fromNamespaceAndPath(MODID, SampleAliases.DIRECTORY), new SampleAliases());
         ServerLifecycleEvents.START_DATA_PACK_RELOAD.register((server, resources) -> SampleResolver.invalidate());
         ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resources, success) -> {
             if (success) {

@@ -7,7 +7,7 @@ import net.fabricmc.api.ClientModInitializer;
 public final class OreSenseClient implements ClientModInitializer {
     @Override
     public void onInitializeClient() {
-        SensorClient.registerModels();
+        SensorClient.registerItemModelType();
         SensorClient.onClientSetup();
         ClientOreSenseNetwork.register();
     }

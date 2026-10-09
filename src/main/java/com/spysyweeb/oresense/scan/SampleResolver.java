@@ -240,7 +240,7 @@ public final class SampleResolver {
      */
     private static Set<Item> accepted(Ingredient ingredient) {
         Set<Item> items = new HashSet<>();
-        for (var holder : ingredient.items()) {
+        for (var holder : ingredient.items().toList()) {
             Item item = holder.value();
             if (item != Items.AIR && item != Items.BARRIER) items.add(item);
         }

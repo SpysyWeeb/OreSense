@@ -13,7 +13,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.fabricmc.fabric.api.resource.IdentifiableResourceReloadListener;
 import com.spysyweeb.oresense.OreSense;
 import org.apache.logging.log4j.Logger;
 
@@ -35,7 +34,7 @@ import java.util.Set;
  * up; a data pack that overrides a file with an empty block list removes that alias. Unknown
  * ids are logged and skipped. /reload reads the folder again.
  */
-public final class SampleAliases extends SimpleJsonResourceReloadListener<JsonElement> implements IdentifiableResourceReloadListener {
+public final class SampleAliases extends SimpleJsonResourceReloadListener<JsonElement> {
     public static final String DIRECTORY = "sample_aliases";
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -45,13 +44,9 @@ public final class SampleAliases extends SimpleJsonResourceReloadListener<JsonEl
     public SampleAliases() {
         super(com.mojang.serialization.Codec.PASSTHROUGH.xmap(
                 dynamic -> dynamic.convert(com.mojang.serialization.JsonOps.INSTANCE).getValue(),
-                json -> new com.mojang.serialization.Dynamic<>(com.mojang.serialization.JsonOps.INSTANCE, json)), DIRECTORY);
+                json -> new com.mojang.serialization.Dynamic<>(com.mojang.serialization.JsonOps.INSTANCE, json)), net.minecraft.resources.FileToIdConverter.json(DIRECTORY));
     }
 
-    @Override
-    public ResourceLocation getFabricId() {
-        return ResourceLocation.fromNamespaceAndPath(OreSense.MODID, DIRECTORY);
-    }
 
     /** The blocks an item stands for through an alias; empty when it has none. */
     public static Set<Block> blocksFor(Item item) {

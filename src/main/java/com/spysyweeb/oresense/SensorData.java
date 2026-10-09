@@ -40,14 +40,14 @@ public final class SensorData {
     /** Vanilla migrates our old outer tag to custom_data, but cannot see the nested sample stack. */
     public static void migrateSample(ItemStack sensor, HolderLookup.Provider registries) {
         CustomData stored = sensor.get(DataComponents.CUSTOM_DATA);
-        if (stored == null || !stored.contains(OreSensorItem.SAMPLE_TAG)) return;
+        if (stored == null || !stored.copyTag().contains(OreSensorItem.SAMPLE_TAG)) return;
         CompoundTag data = stored.copyTag();
         if (!sensor.has(DataComponents.CONTAINER)) {
-            CompoundTag legacy = data.getCompound(OreSensorItem.SAMPLE_TAG);
+            CompoundTag legacy = data.getCompoundOrEmpty(OreSensorItem.SAMPLE_TAG);
             Dynamic<Tag> fixed = DataFixers.getDataFixer().update(References.ITEM_STACK,
                     new Dynamic<>(NbtOps.INSTANCE, legacy), 3465,
-                    SharedConstants.getCurrentVersion().getDataVersion().getVersion());
-            ItemStack sample = ItemStack.parseOptional(registries, (CompoundTag) fixed.getValue());
+                    SharedConstants.getCurrentVersion().dataVersion().version());
+            ItemStack sample = ItemStack.CODEC.parse(registries.createSerializationContext(NbtOps.INSTANCE), fixed.getValue()).result().orElse(ItemStack.EMPTY);
             if (sample.isEmpty()) return; // retain unresolvable legacy data instead of discarding it
             sample(sensor, sample);
         }
