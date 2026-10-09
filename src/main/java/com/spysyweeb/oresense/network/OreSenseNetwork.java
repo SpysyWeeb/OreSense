@@ -1,40 +1,52 @@
 package com.spysyweeb.oresense.network;
 
 import com.spysyweeb.oresense.OreSense;
+import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.networking.v1.ServerLoginConnectionEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerLoginNetworking;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.chat.TextComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkDirection;
-import net.minecraftforge.network.NetworkRegistry;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.network.simple.SimpleChannel;
 
-/** The mod's one network channel. It carries the sample list from server to client. */
+/** Required login handshake, then the server's accepted-sample list during play. */
 public final class OreSenseNetwork {
-    private static final String PROTOCOL = "1";
-
-    /**
-     * Both sides must carry this channel at the same protocol. A client with the mod refuses a
-     * server without it (Alex, 2026-09-23: the player should not be able to join a server that
-     * lacks a mod the client brings), and a server with the mod refuses a client without it.
-     */
-    public static final SimpleChannel CHANNEL = NetworkRegistry.newSimpleChannel(
-            new ResourceLocation(OreSense.MODID, "main"),
-            () -> PROTOCOL,
-            PROTOCOL::equals,
-            PROTOCOL::equals);
+    static final int PROTOCOL = 1;
+    static final ResourceLocation HANDSHAKE = new ResourceLocation(OreSense.MODID, "handshake");
+    static final ResourceLocation SAMPLES = new ResourceLocation(OreSense.MODID, "known_samples");
 
     private OreSenseNetwork() {}
 
-    /** Called once from the mod constructor, while channels can still be registered. */
     public static void register() {
-        CHANNEL.messageBuilder(KnownSamplesPacket.class, 0, NetworkDirection.PLAY_TO_CLIENT)
-                .encoder(KnownSamplesPacket::encode)
-                .decoder(KnownSamplesPacket::decode)
-                .consumer(KnownSamplesPacket::handle)
-                .add();
+        ServerLoginConnectionEvents.QUERY_START.register((handler, server, sender, synchronizer) ->
+                sender.sendPacket(HANDSHAKE, protocolPacket()));
+        ServerLoginNetworking.registerGlobalReceiver(HANDSHAKE,
+                (server, handler, understood, buf, synchronizer, sender) -> {
+                    if (!understood || !matchesProtocol(buf)) {
+                        handler.disconnect(new TextComponent(
+                                "This server requires a compatible OreSense installation for Minecraft 1.17 (Fabric)."));
+                    }
+                });
+    }
+
+    static FriendlyByteBuf protocolPacket() {
+        FriendlyByteBuf buf = PacketByteBufs.create();
+        buf.writeVarInt(PROTOCOL);
+        return buf;
+    }
+
+    static boolean matchesProtocol(FriendlyByteBuf buf) {
+        try {
+            return buf.readVarInt() == PROTOCOL && !buf.isReadable();
+        } catch (RuntimeException malformedPacket) {
+            return false;
+        }
     }
 
     public static void send(ServerPlayer player, KnownSamplesPacket packet) {
-        CHANNEL.send(PacketDistributor.PLAYER.with(() -> player), packet);
+        FriendlyByteBuf buf = PacketByteBufs.create();
+        KnownSamplesPacket.encode(packet, buf);
+        ServerPlayNetworking.send(player, SAMPLES, buf);
     }
 }

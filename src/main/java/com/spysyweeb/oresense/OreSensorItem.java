@@ -21,7 +21,9 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
-import net.minecraft.world.SimpleMenuProvider;
+import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;
+import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
@@ -31,17 +33,15 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.minecraftforge.network.NetworkHooks;
 
-import javax.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Consumer;
 
 public class OreSensorItem extends Item {
-    // 1.18 has no amethyst resonance asset. Use its chime and compensate for the
+    // 1.17 has no amethyst resonance asset. Use its chime and compensate for the
     // 0.2 volume in vanilla's sounds.json so lock/release keep their intended loudness.
     private static final float AMETHYST_CHIME_VOLUME_SCALE = 5.0f;
 
@@ -267,11 +267,22 @@ public class OreSensorItem extends Item {
             return InteractionResultHolder.sidedSuccess(sensor, level.isClientSide());
         }
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
-            NetworkHooks.openGui(serverPlayer,
-                    new SimpleMenuProvider(
-                            (id, inv, p) -> new OreSensorMenu(id, inv, hand),
-                            new TranslatableComponent("container.oresense.ore_sensor")),
-                    buf -> buf.writeEnum(hand));
+            serverPlayer.openMenu(new ExtendedScreenHandlerFactory() {
+                @Override
+                public void writeScreenOpeningData(ServerPlayer openingPlayer, FriendlyByteBuf buf) {
+                    buf.writeEnum(hand);
+                }
+
+                @Override
+                public Component getDisplayName() {
+                    return new TranslatableComponent("container.oresense.ore_sensor");
+                }
+
+                @Override
+                public AbstractContainerMenu createMenu(int id, Inventory inventory, Player openingPlayer) {
+                    return new OreSensorMenu(id, inventory, hand);
+                }
+            });
         }
         return InteractionResultHolder.sidedSuccess(sensor, level.isClientSide());
     }
@@ -312,8 +323,7 @@ public class OreSensorItem extends Item {
     @Override
     public void inventoryTick(ItemStack sensor, Level level, Entity entity, int slot, boolean selected) {
         if (!(level instanceof ServerLevel serverLevel) || !(entity instanceof ServerPlayer player)) return;
-        // by identity, not the selected flag: Forge passes selected for the off hand and armour
-        // slots whenever their slot index equals the selected hotbar index
+        // Compare stack identity so the off-hand sensor is scanned as well.
         boolean inHand = sensor == player.getMainHandItem() || sensor == player.getOffhandItem();
         if (!inHand && !isLocked(sensor)) return;
 
@@ -442,7 +452,7 @@ public class OreSensorItem extends Item {
     // ---- charging ----
 
     /**
-     * The player broke a block (Forge's BreakEvent, server side). Every sensor they carry in
+     * The player successfully broke a block (Fabric AFTER event, server side). Every sensor they carry in
      * the 36 main slots or the off hand whose unpaid lock holds that block spends its charge;
      * the lock stays, paid, on the rest of the vein. Creative players pay nothing. A lock with
      * no charge left to spend is let go instead.
@@ -657,25 +667,4 @@ public class OreSensorItem extends Item {
     @Override
     public boolean isFoil(ItemStack stack) { return false; }
 
-    /** The sensor rewrites its reading constantly; that must not replay the equip animation. */
-    @Override
-    public boolean shouldCauseReequipAnimation(ItemStack oldStack, ItemStack newStack, boolean slotChanged) {
-        return slotChanged || oldStack.getItem() != newStack.getItem();
-    }
-
-    @Override
-    public boolean shouldCauseBlockBreakReset(ItemStack oldStack, ItemStack newStack) {
-        return oldStack.getItem() != newStack.getItem();
-    }
-
-    /** Hands rendering to our own renderer so the sample ore can sit on the dial. */
-    @Override
-    public void initializeClient(Consumer<net.minecraftforge.client.IItemRenderProperties> consumer) {
-        consumer.accept(new net.minecraftforge.client.IItemRenderProperties() {
-            @Override
-            public net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer getItemStackRenderer() {
-                return com.spysyweeb.oresense.client.SensorRenderer.get();
-            }
-        });
-    }
 }

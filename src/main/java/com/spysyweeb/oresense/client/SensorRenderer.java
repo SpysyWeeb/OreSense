@@ -8,9 +8,10 @@ import com.mojang.math.Vector3f;
 import com.mojang.math.Vector4f;
 import com.spysyweeb.oresense.OreSensorItem;
 import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
 import net.minecraft.Util;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
+import net.minecraft.client.color.item.ItemColor;
 import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -32,11 +33,18 @@ import java.util.Random;
  * Draws the 16x16 dial as stacked layers (base, sonar ring, charge gauge, needle tail and tip, lit
  * lamp), then the sample sitting in the window at the centre so you can see what it is hunting for.
  */
-public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
+public class SensorRenderer {
     private static final int VERTEX_STRIDE = DefaultVertexFormat.BLOCK.getIntegerSize();
-    private static final int POSITION_OFFSET = DefaultVertexFormat.BLOCK.getOffset(0) / Integer.BYTES;
-    private static final int COLOR_OFFSET = DefaultVertexFormat.BLOCK.getOffset(1) / Integer.BYTES;
-    private static final int UV_OFFSET = DefaultVertexFormat.BLOCK.getOffset(2) / Integer.BYTES;
+    private static final int POSITION_OFFSET = elementOffset(0);
+    private static final int COLOR_OFFSET = elementOffset(1);
+    private static final int UV_OFFSET = elementOffset(2);
+
+    /** Vanilla exposes the elements, but not Forge's precomputed byte offsets. */
+    private static int elementOffset(int element) {
+        int bytes = 0;
+        for (int i = 0; i < element; i++) bytes += DefaultVertexFormat.BLOCK.getElements().get(i).getByteSize();
+        return bytes / Integer.BYTES;
+    }
 
     // locked needle glow: one pulse per PULSE_NEAR_MS on the target, PULSE_NEAR_MS + PULSE_FAR_MS
     // at the edge of the scan range, linear in between
@@ -83,17 +91,11 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
 
     public static SensorRenderer instance;
 
-    public SensorRenderer() {
-        super(Minecraft.getInstance().getBlockEntityRenderDispatcher(),
-              Minecraft.getInstance().getEntityModels());
-    }
-
     public static SensorRenderer get() {
         if (instance == null) instance = new SensorRenderer();
         return instance;
     }
 
-    @Override
     public void renderByItem(ItemStack stack, TransformType context, PoseStack pose,
                              MultiBufferSource buffer, int light, int overlay) {
         Minecraft mc = Minecraft.getInstance();
@@ -170,7 +172,7 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
         pose.translate(0.5f, 0.5f, flat ? DECAL_Z : 0.56f);   // lens centre
         pose.scale(SAMPLE_SCALE, SAMPLE_SCALE, SAMPLE_SCALE);
         if (flat) {
-            drawFlatIcon(pose, buffer, mc, sample, model, light, overlay);
+            drawFlatIcon(pose, buffer, sample, model, light, overlay);
         } else {
             mc.getItemRenderer().renderStatic(null, sample, TransformType.GUI, false,
                     pose, buffer, mc.level, light, overlay, 0);
@@ -183,8 +185,7 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
      * sits in the glass like a picture instead of a cube poking out of the dial.
      * <p>
      * Each quad goes through the model's own GUI transform, built by the engine's own
-     * {@code ItemTransform.apply} (translate, then an XYZ Euler quaternion, then scale; Forge's
-     * right_rotation after that, identity for vanilla), after the same -0.5 centring
+     * {@code ItemTransform.apply} (translate, then an XYZ Euler quaternion, then scale), after the same -0.5 centring
      * ItemRenderer.render does. Then z is pressed to {@code DECAL_DEPTH} of itself, so every face
      * lies on the socket plane as far as the eye can tell, while the depth test still sees which
      * part of the model is nearer.
@@ -230,7 +231,7 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
      * step's top (no cullface, so in the unculled list, drawn last), painted over the upper step's
      * front.
      */
-    private static void drawFlatIcon(PoseStack ps, MultiBufferSource buffer, Minecraft mc,
+    private static void drawFlatIcon(PoseStack ps, MultiBufferSource buffer,
                                      ItemStack sample, BakedModel model, int light, int overlay) {
         PoseStack gui = new PoseStack();
         model.getTransforms().getTransform(TransformType.GUI).apply(false, gui);
@@ -253,6 +254,8 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
         PoseStack.Pose dial = ps.last();
         Vector3f n = new Vector3f();
         Vector4f p = new Vector4f();
+        // Fabric exposes the game's complete item-colour map, including vanilla providers.
+        ItemColor colour = ColorProviderRegistry.ITEM.get(sample.getItem());
         for (BakedQuad quad : quads) {
             Direction face = quad.getDirection();
             n.set(face.getStepX(), face.getStepY(), face.getStepZ());
@@ -262,7 +265,7 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
             // a face looking straight at the viewer (a flat item's front) is lit in full; the
             // three faces of a block's isometric icon get the inventory look: top, left, right
             float shade = n.z() >= 0.9f || n.y() > 0.5f ? 1.0f : n.x() < 0f ? 0.8f : 0.6f;
-            int tint = quad.isTinted() ? mc.getItemColors().getColor(sample, quad.getTintIndex()) : -1;
+            int tint = quad.isTinted() && colour != null ? colour.getColor(sample, quad.getTintIndex()) : -1;
             float r = (tint >> 16 & 255) / 255f * shade;
             float g = (tint >> 8 & 255) / 255f * shade;
             float b = (tint & 255) / 255f * shade;
@@ -336,10 +339,33 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
                                   float r, float g, float b, float a, int light, int overlay) {
         PoseStack.Pose pose = ps.last();
         Random rand = new Random(42L);
-        float[] bright = {1f, 1f, 1f, 1f};
-        int[] lights = {light, light, light, light};
         for (Direction d : Direction.values())
-            for (BakedQuad q : model.getQuads(null, d, rand)) vc.putBulkData(pose, q, bright, r, g, b, a, lights, overlay, false);
-        for (BakedQuad q : model.getQuads(null, null, rand)) vc.putBulkData(pose, q, bright, r, g, b, a, lights, overlay, false);
+            for (BakedQuad q : model.getQuads(null, d, rand)) drawQuad(pose, vc, q, r, g, b, a, light, overlay);
+        for (BakedQuad q : model.getQuads(null, null, rand)) drawQuad(pose, vc, q, r, g, b, a, light, overlay);
+    }
+
+    /**
+     * Vanilla's bulk quad writer fixes alpha at one. Emit the same transformed positions,
+     * face normals and supplied light ourselves so the sonar and empty gauge can still fade.
+     * As in the Forge call with readExistingColor=false, layer colours come from our tint;
+     * the baked texture supplies the pixel colour and transparency.
+     */
+    private static void drawQuad(PoseStack.Pose pose, VertexConsumer vc, BakedQuad quad,
+                                 float r, float g, float b, float a, int light, int overlay) {
+        Direction face = quad.getDirection();
+        int[] vertices = quad.getVertices();
+        for (int o = 0; o < vertices.length; o += VERTEX_STRIDE) {
+            vc.vertex(pose.pose(),
+                            Float.intBitsToFloat(vertices[o + POSITION_OFFSET]),
+                            Float.intBitsToFloat(vertices[o + POSITION_OFFSET + 1]),
+                            Float.intBitsToFloat(vertices[o + POSITION_OFFSET + 2]))
+                    .color(r, g, b, a)
+                    .uv(Float.intBitsToFloat(vertices[o + UV_OFFSET]),
+                            Float.intBitsToFloat(vertices[o + UV_OFFSET + 1]))
+                    .overlayCoords(overlay)
+                    .uv2(light)
+                    .normal(pose.normal(), face.getStepX(), face.getStepY(), face.getStepZ())
+                    .endVertex();
+        }
     }
 }

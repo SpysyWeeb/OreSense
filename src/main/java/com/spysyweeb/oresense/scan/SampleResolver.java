@@ -1,7 +1,11 @@
 package com.spysyweeb.oresense.scan;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.server.ServerResources;
+import net.minecraft.core.Registry;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.BlockTags;
+import net.minecraft.world.level.storage.loot.LootTables;
+import com.spysyweeb.oresense.OreSense;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
@@ -16,8 +20,6 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.loot.LootContext;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.Tags;
-import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.*;
 
@@ -33,16 +35,14 @@ import java.util.*;
  */
 public final class SampleResolver {
     private static Map<Item, Set<Block>> itemToOres = null;
+    private static final ResourceLocation ORE_TAG = new ResourceLocation(OreSense.MODID, "ores");
     /**
-     * The data the map was built from. Loot tables, recipes and tags all live in one
-     * ServerResources, and /reload swaps in a new one on the server thread (in
-     * MinecraftServer.reloadResources) before it re-tags the registries and resyncs players.
-     * Keying the map on that object means it always matches the data the server is using,
-     * whatever runs while a reload is in flight: a command-started reload waits in
-     * managedBlock, which keeps running queued packets, and a sample-slot click among them
-     * resolves against the old data that is still live at that moment.
+     * /reload replaces both managers when the newly loaded resources become live. Checking
+     * their identities keeps a sample click during an in-flight reload from caching old
+     * recipes and loot after the new resources have been installed.
      */
-    private static ServerResources builtFrom = null;
+    private static RecipeManager builtRecipes;
+    private static LootTables builtLoot;
 
     private SampleResolver() {}
 
@@ -66,7 +66,7 @@ public final class SampleResolver {
         // what it drops; any other block stands for itself only when the oresOnly config is off
         if (sample.getItem() instanceof BlockItem blockItem) {
             Block block = blockItem.getBlock();
-            if (block.defaultBlockState().is(Tags.Blocks.ORES)) {
+            if (block.defaultBlockState().is(BlockTags.getAllTags().getTagOrEmpty(ORE_TAG))) {
                 return byProduct(level).getOrDefault(sample.getItem(), Set.of(block));
             }
             if (!com.spysyweeb.oresense.Config.INSTANCE.oresOnly.get()) {
@@ -90,17 +90,18 @@ public final class SampleResolver {
         byProduct(level).forEach((item, ores) -> {
             if (!ores.isEmpty() && item != Items.AIR) items.add(item);   // air: an ore with no item
         });
-        for (Item item : ForgeRegistries.ITEMS) {
+        for (Item item : Registry.ITEM) {
             if (item instanceof BlockItem blockItem
-                    && blockItem.getBlock().defaultBlockState().is(Tags.Blocks.ORES)) items.add(item);
+                    && blockItem.getBlock().defaultBlockState().is(BlockTags.getAllTags().getTagOrEmpty(ORE_TAG))) items.add(item);
         }
         items.addAll(SampleAliases.items());
         return items;
     }
 
     private static Map<Item, Set<Block>> byProduct(ServerLevel level) {
-        ServerResources data = level.getServer().getServerResources();
-        if (itemToOres != null && builtFrom == data) return itemToOres;
+        RecipeManager recipes = level.getRecipeManager();
+        LootTables loot = level.getServer().getLootTables();
+        if (itemToOres != null && builtRecipes == recipes && builtLoot == loot) return itemToOres;
 
         // seed: each ore block's own item, and everything the ore drops, stand for that ore
         Map<Item, Set<Block>> map = new HashMap<>();
@@ -109,9 +110,9 @@ public final class SampleResolver {
                 .withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(BlockPos.ZERO))
                 .withParameter(LootContextParams.TOOL, new ItemStack(Items.NETHERITE_PICKAXE));
 
-        for (Block block : ForgeRegistries.BLOCKS) {
+        for (Block block : Registry.BLOCK) {
             BlockState state = block.defaultBlockState();
-            if (!state.is(Tags.Blocks.ORES)) continue;
+            if (!state.is(BlockTags.getAllTags().getTagOrEmpty(ORE_TAG))) continue;
             map.computeIfAbsent(block.asItem(), k -> new HashSet<>()).add(block);
             List<ItemStack> drops;
             try {
@@ -130,7 +131,6 @@ public final class SampleResolver {
 
         // material links from the server's recipes: item -> the items made purely of it
         Map<Item, Set<Item>> links = new HashMap<>();
-        RecipeManager recipes = level.getRecipeManager();
         linkCooking(recipes.getAllRecipesFor(RecipeType.SMELTING), links);
         linkCooking(recipes.getAllRecipesFor(RecipeType.BLASTING), links);
         linkCrafting(recipes.getAllRecipesFor(RecipeType.CRAFTING), links);
@@ -164,7 +164,8 @@ public final class SampleResolver {
         siblings.forEach((item, ores) -> map.computeIfAbsent(item, k -> new HashSet<>()).addAll(ores));
 
         itemToOres = map;
-        builtFrom = data;
+        builtRecipes = recipes;
+        builtLoot = loot;
         return map;
     }
 
@@ -220,10 +221,8 @@ public final class SampleResolver {
     }
 
     /**
-     * The items an ingredient accepts. For a tag with no members Forge hands out a barrier
-     * named "Empty Tag: ..." instead (Ingredient.TagValue.getItems). That is no material, so it
-     * is left out: such an ingredient accepts nothing, links nothing, and keeps a crafting
-     * recipe that needs it from counting as pure.
+     * The items an ingredient accepts. Empty stacks and barrier placeholders are not
+     * usable materials and must not link a recipe to an ore.
      */
     private static Set<Item> accepted(Ingredient ingredient) {
         Set<Item> items = new HashSet<>();
@@ -240,6 +239,7 @@ public final class SampleResolver {
     /** Drops the map and the data it holds on to; the next call rebuilds it. */
     public static synchronized void invalidate() {
         itemToOres = null;
-        builtFrom = null;
+        builtRecipes = null;
+        builtLoot = null;
     }
 }

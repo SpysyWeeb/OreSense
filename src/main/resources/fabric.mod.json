@@ -1,0 +1,35 @@
+{
+  "schemaVersion": 1,
+  "id": "oresense",
+  "version": "${version}",
+  "name": "OreSense",
+  "description": "A prospecting sensor: tune it with an ore or what the ore drops, charge it with amethyst shards, then follow the needle to the vein.",
+  "authors": [
+    "SpicyWeab"
+  ],
+  "contact": {
+    "homepage": "https://github.com/SpysyWeeb/OreSense",
+    "sources": "https://github.com/SpysyWeeb/OreSense/tree/Fabric-1.17",
+    "issues": "https://github.com/SpysyWeeb/OreSense/issues"
+  },
+  "license": "MIT",
+  "icon": "logo.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "com.spysyweeb.oresense.OreSense"
+    ],
+    "client": [
+      "com.spysyweeb.oresense.client.OreSenseClient"
+    ]
+  },
+  "mixins": [
+    "oresense.client.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "fabric": ">=0.36.0",
+    "minecraft": "1.17",
+    "java": ">=16"
+  }
+}

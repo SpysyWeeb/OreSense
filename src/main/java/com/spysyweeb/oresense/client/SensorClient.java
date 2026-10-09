@@ -4,8 +4,10 @@ import com.spysyweeb.oresense.Config;
 import com.spysyweeb.oresense.OreSense;
 import com.spysyweeb.oresense.OreSensorItem;
 import com.spysyweeb.oresense.scan.Signal;
+import net.fabricmc.fabric.api.client.model.ModelLoadingRegistry;
+import net.fabricmc.fabric.api.client.rendering.v1.BuiltinItemRendererRegistry;
+import net.fabricmc.fabric.api.client.screenhandler.v1.ScreenRegistry;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.client.renderer.block.model.ItemTransforms.TransformType;
@@ -13,16 +15,9 @@ import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ModelRegistryEvent;
-import net.minecraftforge.client.model.ForgeModelBakery;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
 import java.util.Locale;
 
-@Mod.EventBusSubscriber(modid = OreSense.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public class SensorClient {
     public static final int SONAR_RINGS = 3;
     /** Charge gauge cells under the window, 16 shards each: cell 0 is the left end, the gauge fills to the right. */
@@ -96,21 +91,23 @@ public class SensorClient {
         return models;
     }
 
-    @SubscribeEvent
-    public static void registerModels(ModelRegistryEvent event) {
-        ForgeModelBakery.addSpecialModel(BASE);
-        ForgeModelBakery.addSpecialModel(LAMP_UP);
-        ForgeModelBakery.addSpecialModel(LAMP_DOWN);
-        ForgeModelBakery.addSpecialModel(EMPTY);
-        for (ModelResourceLocation frame : NEEDLE) ForgeModelBakery.addSpecialModel(frame);
-        for (ModelResourceLocation frame : TAIL) ForgeModelBakery.addSpecialModel(frame);
-        for (ModelResourceLocation ring : SONAR) ForgeModelBakery.addSpecialModel(ring);
-        for (ModelResourceLocation cell : CHARGE) ForgeModelBakery.addSpecialModel(cell);
+    public static void registerModels() {
+        ModelLoadingRegistry.INSTANCE.registerModelProvider((manager, out) -> {
+            out.accept(BASE);
+            out.accept(LAMP_UP);
+            out.accept(LAMP_DOWN);
+            out.accept(EMPTY);
+            for (ModelResourceLocation frame : NEEDLE) out.accept(frame);
+            for (ModelResourceLocation frame : TAIL) out.accept(frame);
+            for (ModelResourceLocation ring : SONAR) out.accept(ring);
+            for (ModelResourceLocation cell : CHARGE) out.accept(cell);
+        });
     }
 
-    @SubscribeEvent
-    public static void onClientSetup(FMLClientSetupEvent event) {
-        event.enqueueWork(() -> MenuScreens.register(OreSense.ORE_SENSOR_MENU.get(), OreSensorScreen::new));
+    public static void onClientSetup() {
+        ScreenRegistry.register(OreSense.ORE_SENSOR_MENU, OreSensorScreen::new);
+        BuiltinItemRendererRegistry.DynamicItemRenderer renderer = SensorRenderer.get()::renderByItem;
+        BuiltinItemRendererRegistry.INSTANCE.register(OreSense.ORE_SENSOR, renderer);
     }
 
     /** Works out what this stack's dial shows right now, easing the needle toward the live reading. */

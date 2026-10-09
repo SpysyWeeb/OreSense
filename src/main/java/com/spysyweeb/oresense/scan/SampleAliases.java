@@ -14,10 +14,12 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.Registry;
+import net.fabricmc.fabric.api.resource.IdentifiableResourceReloadListener;
+import com.spysyweeb.oresense.OreSense;
 import org.apache.logging.log4j.Logger;
 
-import javax.annotation.Nullable;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.HashMap;
 import java.util.HashSet;
@@ -35,7 +37,7 @@ import java.util.Set;
  * up; a data pack that overrides a file with an empty block list removes that alias. Unknown
  * ids are logged and skipped. /reload reads the folder again.
  */
-public final class SampleAliases extends SimpleJsonResourceReloadListener {
+public final class SampleAliases extends SimpleJsonResourceReloadListener implements IdentifiableResourceReloadListener {
     public static final String DIRECTORY = "sample_aliases";
     private static final Logger LOGGER = LogManager.getLogger();
     private static final Gson GSON = new GsonBuilder().create();
@@ -45,6 +47,11 @@ public final class SampleAliases extends SimpleJsonResourceReloadListener {
 
     public SampleAliases() {
         super(GSON, DIRECTORY);
+    }
+
+    @Override
+    public ResourceLocation getFabricId() {
+        return new ResourceLocation(OreSense.MODID, DIRECTORY);
     }
 
     /** The blocks an item stands for through an alias; empty when it has none. */
@@ -99,8 +106,8 @@ public final class SampleAliases extends SimpleJsonResourceReloadListener {
     @Nullable
     private static Item item(String id) {
         ResourceLocation location = ResourceLocation.tryParse(id);
-        if (location == null || !ForgeRegistries.ITEMS.containsKey(location)) return null;
-        Item item = ForgeRegistries.ITEMS.getValue(location);
+        if (location == null || !Registry.ITEM.containsKey(location)) return null;
+        Item item = Registry.ITEM.get(location);
         return item == Items.AIR ? null : item;
     }
 
@@ -108,8 +115,8 @@ public final class SampleAliases extends SimpleJsonResourceReloadListener {
     @Nullable
     private static Block block(String id) {
         ResourceLocation location = ResourceLocation.tryParse(id);
-        if (location == null || !ForgeRegistries.BLOCKS.containsKey(location)) return null;
-        Block block = ForgeRegistries.BLOCKS.getValue(location);
+        if (location == null || !Registry.BLOCK.containsKey(location)) return null;
+        Block block = Registry.BLOCK.get(location);
         return block == Blocks.AIR ? null : block;
     }
 }

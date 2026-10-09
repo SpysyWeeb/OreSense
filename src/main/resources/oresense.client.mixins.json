@@ -1,0 +1,12 @@
+{
+  "required": true,
+  "package": "com.spysyweeb.oresense.client.mixin",
+  "compatibilityLevel": "JAVA_16",
+  "client": [
+    "ItemInHandRendererMixin",
+    "MultiPlayerGameModeMixin"
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
+}

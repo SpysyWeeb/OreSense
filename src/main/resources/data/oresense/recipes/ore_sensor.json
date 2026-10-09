@@ -2,9 +2,9 @@
   "type": "minecraft:crafting_shaped",
   "pattern": [ "GAG", "AIA", "GAG" ],
   "key": {
-    "G": { "tag": "forge:ingots/gold" },
+    "G": { "tag": "oresense:ingots/gold" },
     "A": { "item": "minecraft:amethyst_shard" },
-    "I": { "tag": "forge:ingots/iron" }
+    "I": { "tag": "oresense:ingots/iron" }
   },
   "result": { "item": "oresense:ore_sensor" }
 }

@@ -5,98 +5,57 @@ import com.spysyweeb.oresense.network.KnownSamplesPacket;
 import com.spysyweeb.oresense.network.OreSenseNetwork;
 import com.spysyweeb.oresense.scan.SampleAliases;
 import com.spysyweeb.oresense.scan.SampleResolver;
+import net.fabricmc.api.ModInitializer;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
+import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
+import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
+import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
+import net.fabricmc.fabric.api.screenhandler.v1.ScreenHandlerRegistry;
+import net.minecraft.core.Registry;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.level.Level;
+import net.minecraft.server.packs.PackType;
+import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
-import net.minecraft.world.inventory.MenuType;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.extensions.IForgeMenuType;
-import net.minecraftforge.event.AddReloadListenerEvent;
-import net.minecraftforge.event.OnDatapackSyncEvent;
-import net.minecraftforge.event.world.BlockEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
 
-@Mod(OreSense.MODID)
-public class OreSense {
+public class OreSense implements ModInitializer {
     public static final String MODID = "oresense";
 
-    public static final DeferredRegister<Item> ITEMS =
-            DeferredRegister.create(ForgeRegistries.ITEMS, MODID);
-    public static final DeferredRegister<MenuType<?>> MENUS =
-            DeferredRegister.create(ForgeRegistries.CONTAINERS, MODID);
-
-    public static final RegistryObject<Item> ORE_SENSOR =
-            ITEMS.register("ore_sensor", () -> new OreSensorItem(
+    public static final Item ORE_SENSOR = Registry.register(Registry.ITEM,
+            new ResourceLocation(MODID, "ore_sensor"), new OreSensorItem(
                     new Item.Properties().stacksTo(1).tab(CreativeModeTab.TAB_TOOLS)));
 
-    public static final RegistryObject<MenuType<OreSensorMenu>> ORE_SENSOR_MENU =
-            MENUS.register("ore_sensor", () -> IForgeMenuType.create(OreSensorMenu::fromNetwork));
+    public static final MenuType<OreSensorMenu> ORE_SENSOR_MENU =
+            ScreenHandlerRegistry.registerExtended(new ResourceLocation(MODID, "ore_sensor"),
+                    OreSensorMenu::fromNetwork);
 
-    public OreSense() {
-        IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();
-        ITEMS.register(bus);
-        MENUS.register(bus);
-        net.minecraftforge.fml.ModLoadingContext.get().registerConfig(
-                net.minecraftforge.fml.config.ModConfig.Type.COMMON, Config.SPEC);
+    @Override
+    public void onInitialize() {
+        Config.load();
         OreSenseNetwork.register();
-        MinecraftForge.EVENT_BUS.addListener(this::reloadSamples);
-        MinecraftForge.EVENT_BUS.addListener(this::syncSamples);
-        // lowest priority, and never for a cancelled break: every mod that may refuse the break
-        // (claims, spawn protection, adventure mode) has had its say before a charge is spent
-        MinecraftForge.EVENT_BUS.addListener(EventPriority.LOWEST, false, BlockEvent.BreakEvent.class, this::spendCharge);
+        ResourceManagerHelper.get(PackType.SERVER_DATA).registerReloadListener(new SampleAliases());
+        ServerLifecycleEvents.START_DATA_PACK_RELOAD.register((server, resources) -> SampleResolver.invalidate());
+        ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resources, success) -> {
+            if (success) {
+                SampleResolver.invalidate();
+                KnownSamplesPacket packet = samples(server);
+                for (ServerPlayer player : server.getPlayerList().getPlayers()) OreSenseNetwork.send(player, packet);
+            }
+        });
+        ServerLifecycleEvents.SERVER_STOPPED.register(server -> SampleResolver.invalidate());
+        ServerPlayConnectionEvents.JOIN.register((handler, sender, server) ->
+                OreSenseNetwork.send(handler.player, samples(server)));
+        // AFTER runs only after a successful break, so protection mods and cancelled breaks
+        // cannot consume a charge. The saved lock still contains the just-removed position.
+        PlayerBlockBreakEvents.AFTER.register((level, player, pos, state, blockEntity) -> {
+            if (player instanceof ServerPlayer serverPlayer) OreSensorItem.onBlockBroken(serverPlayer, level, pos);
+        });
     }
 
-    /**
-     * Samples resolve through loot tables, recipes and the sample_aliases data folder, and
-     * /reload or a datapack change replaces all three. This fires as the new data starts
-     * loading. It lets go of the resolver's old map early (the resolver keys its map on the
-     * data it was built from, so a sample-slot click that runs while the reload is in flight
-     * cannot leave a map of the old data behind) and adds the alias loader to the reload, which
-     * swaps in the new aliases once they are read.
-     */
-    private void reloadSamples(AddReloadListenerEvent event) {
-        SampleResolver.invalidate();
-        event.addListener(new SampleAliases());
-    }
-
-    /**
-     * Mining a block of a locked vein spends the sensor's charge. Forge posts BreakEvent from
-     * ServerPlayerGameMode.destroyBlock (ForgeHooks.onBlockBreakEvent), on the server thread,
-     * before the block is removed. A machine's fake player is a ServerPlayer too; it never
-     * ticks (FakePlayer.tick is empty), so it cannot lock a sensor itself and pays only for a
-     * locked sensor someone put in its inventory.
-     */
-    private void spendCharge(BlockEvent.BreakEvent event) {
-        if (event.getWorld().isClientSide()) return;
-        if (!(event.getPlayer() instanceof ServerPlayer player) || !(event.getWorld() instanceof Level level)) return;
-        OreSensorItem.onBlockBroken(player, level, event.getPos());
-    }
-
-    /**
-     * Tells clients which items the sample slot takes, so the slot can refuse the rest on the
-     * client too instead of snapping back. Forge fires this for one player as they join
-     * (PlayerList.placeNewPlayer, before they can open anything) and for everyone after a
-     * /reload has swapped in and re-tagged the new data (PlayerList.reloadResources); in both
-     * cases we send to the joining player or, for a reload, everyone. The first join builds the resolver's
-     * map on the server thread, which the first scan used to do.
-     */
-    private void syncSamples(OnDatapackSyncEvent event) {
-        KnownSamplesPacket packet = new KnownSamplesPacket(
-                SampleResolver.knownSamples(event.getPlayerList().getServer().overworld()),
+    private static KnownSamplesPacket samples(MinecraftServer server) {
+        return new KnownSamplesPacket(SampleResolver.knownSamples(server.overworld()),
                 !Config.INSTANCE.oresOnly.get());
-        if (event.getPlayer() != null) {
-            OreSenseNetwork.send(event.getPlayer(), packet);
-            return;
-        }
-        for (ServerPlayer player : event.getPlayerList().getPlayers()) {
-            OreSenseNetwork.send(player, packet);
-        }
     }
 }

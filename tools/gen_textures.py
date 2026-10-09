@@ -29,9 +29,9 @@ the dial centre is the continuous point (8.0, 8.0), the corner between pixels 7 
 
 Usage: python3 tools/gen_textures.py [--preview PATH] [--client-jar PATH]
 Deterministic, Pillow is the only dependency; it reads the vanilla textures straight out of
-the Forge client-extra jar (palette check, the preview's hotbar and sample). The 1.18 port keeps
+the Forge client-extra jar (palette check, the preview's hotbar and sample). The 1.17 Fabric port keeps
 the original artwork and its 1.19.1 palette reference, including recovery-compass colours;
-all resulting textures are bundled with the mod, so Minecraft 1.18 needs no newer assets. It writes every
+all resulting textures are bundled with the mod, so Minecraft 1.17 needs no newer assets. It writes every
 layer's PNG and item/generated model JSON, rewrites models/item/ore_sensor.json (display block
 kept verbatim), deletes every other ore_sensor_* texture/model (the retired 64 px layers) so
 nothing stale reaches the jar, writes textures/gui/ore_sensor.png (the sensor screen, see the
