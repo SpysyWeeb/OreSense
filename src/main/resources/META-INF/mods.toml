@@ -11,13 +11,13 @@ displayURL="https://github.com/SpysyWeeb/OreSense"
 logoFile="logo.png"
 logoBlur=false
 authors="${mod_authors}"
-credits="Dial art generated from vanilla palettes; built with Minecraft Forge."
+credits="Dial art generated from vanilla palettes; built with NeoForge."
 description='''${mod_description}'''
 
 [[dependencies.${mod_id}]]
-    modId="forge"
+    modId="neoforge"
     mandatory=true
-    versionRange="${forge_version_range}"
+    versionRange="${neo_version_range}"
     ordering="NONE"
     side="BOTH"
 

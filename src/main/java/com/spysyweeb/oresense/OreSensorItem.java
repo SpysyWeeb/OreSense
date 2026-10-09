@@ -261,7 +261,7 @@ public class OreSensorItem extends Item {
             return InteractionResultHolder.sidedSuccess(sensor, level.isClientSide());
         }
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
-            serverPlayer.openMenu(
+            net.neoforged.neoforge.network.NetworkHooks.openScreen(serverPlayer,
                     new SimpleMenuProvider(
                             (id, inv, p) -> new OreSensorMenu(id, inv, hand),
                             Component.translatable("container.oresense.ore_sensor")),
@@ -663,8 +663,8 @@ public class OreSensorItem extends Item {
 
     /** Hands rendering to our own renderer so the sample ore can sit on the dial. */
     @Override
-    public void initializeClient(Consumer<net.minecraftforge.client.extensions.common.IClientItemExtensions> consumer) {
-        consumer.accept(new net.minecraftforge.client.extensions.common.IClientItemExtensions() {
+    public void initializeClient(Consumer<net.neoforged.neoforge.client.extensions.common.IClientItemExtensions> consumer) {
+        consumer.accept(new net.neoforged.neoforge.client.extensions.common.IClientItemExtensions() {
             @Override
             public net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer getCustomRenderer() {
                 return com.spysyweeb.oresense.client.SensorRenderer.get();
