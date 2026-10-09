@@ -1,23 +1,23 @@
 package com.spysyweeb.oresense;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 import org.apache.commons.lang3.tuple.Pair;
 
 public class Config {
     /** How long a reading keeps the needle locked on, in ticks. */
     public static final long TARGET_LIFETIME = 300;
 
-    public static final ForgeConfigSpec SPEC;
+    public static final ModConfigSpec SPEC;
     public static final Config INSTANCE;
 
-    public final ForgeConfigSpec.IntValue horizontalRange;
-    public final ForgeConfigSpec.IntValue verticalRange;
-    public final ForgeConfigSpec.IntValue scanIntervalTicks;
-    public final ForgeConfigSpec.BooleanValue showDirection;
-    public final ForgeConfigSpec.BooleanValue oresOnly;
-    public final ForgeConfigSpec.BooleanValue showActionBar;
+    public final ModConfigSpec.IntValue horizontalRange;
+    public final ModConfigSpec.IntValue verticalRange;
+    public final ModConfigSpec.IntValue scanIntervalTicks;
+    public final ModConfigSpec.BooleanValue showDirection;
+    public final ModConfigSpec.BooleanValue oresOnly;
+    public final ModConfigSpec.BooleanValue showActionBar;
 
-    Config(ForgeConfigSpec.Builder b) {
+    Config(ModConfigSpec.Builder b) {
         b.comment("OreSense - prospecting sensor").push("scanning");
         horizontalRange = b.comment("How far out the sensor looks, in blocks.")
                 .defineInRange("horizontalRange", 32, 4, 96);
@@ -35,7 +35,7 @@ public class Config {
     }
 
     static {
-        Pair<Config, ForgeConfigSpec> pair = new ForgeConfigSpec.Builder().configure(Config::new);
+        Pair<Config, ModConfigSpec> pair = new ModConfigSpec.Builder().configure(Config::new);
         INSTANCE = pair.getLeft();
         SPEC = pair.getRight();
     }

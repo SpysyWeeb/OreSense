@@ -9,8 +9,8 @@ import net.minecraft.client.resources.model.ModelBaker;
 import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.client.resources.model.ModelState;
 import net.minecraft.client.resources.model.UnbakedModel;
-import net.minecraftforge.client.model.geometry.IGeometryBakingContext;
-import net.minecraftforge.client.model.geometry.IUnbakedGeometry;
+import net.neoforged.neoforge.client.model.geometry.IGeometryBakingContext;
+import net.neoforged.neoforge.client.model.geometry.IUnbakedGeometry;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -25,7 +25,7 @@ public final class SensorModel implements IUnbakedGeometry<SensorModel> {
 
     @Override
     public BakedModel bake(IGeometryBakingContext context, ModelBaker baker,
-                           Function<Material, TextureAtlasSprite> sprites, ModelState state) {
+                           Function<Material, TextureAtlasSprite> sprites, ModelState state, java.util.List<net.minecraft.client.renderer.block.model.ItemOverride> overrides) {
         Map<ModelResourceLocation, BakedModel> layers = new HashMap<>();
         for (ModelResourceLocation layer : SensorClient.layers()) {
             layers.put(layer, baker.bake(layer.id(), BlockModelRotation.X0_Y0));
