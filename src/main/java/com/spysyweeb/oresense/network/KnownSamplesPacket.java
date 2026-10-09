@@ -1,6 +1,11 @@
 package com.spysyweeb.oresense.network;
 
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.minecraft.resources.ResourceLocation;
+import com.spysyweeb.oresense.OreSense;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.core.Registry;
@@ -10,7 +15,14 @@ import java.util.HashSet;
 import java.util.Set;
 
 /** Server to client: the items the sample slot accepts, and whether any block goes too. */
-public record KnownSamplesPacket(Set<Item> items, boolean anyBlock) {
+public record KnownSamplesPacket(Set<Item> items, boolean anyBlock) implements CustomPacketPayload {
+    public static final Type<KnownSamplesPacket> TYPE = new Type<>(new ResourceLocation(OreSense.MODID, "known_samples"));
+    public static final StreamCodec<RegistryFriendlyByteBuf, KnownSamplesPacket> STREAM_CODEC =
+            StreamCodec.of((buf, packet) -> encode(packet, buf), KnownSamplesPacket::decode);
+
+    @Override
+    public Type<KnownSamplesPacket> type() { return TYPE; }
+
 
     public static void encode(KnownSamplesPacket packet, FriendlyByteBuf buf) {
         buf.writeBoolean(packet.anyBlock);

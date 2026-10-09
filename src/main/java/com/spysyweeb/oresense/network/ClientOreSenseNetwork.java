@@ -50,11 +50,10 @@ public final class ClientOreSenseNetwork {
             verified.remove(handler.getConnection());
             KnownSamples.set(Set.of(), false);
         });
-        ClientPlayNetworking.registerGlobalReceiver(OreSenseNetwork.SAMPLES, (client, handler, buf, sender) -> {
-            KnownSamplesPacket packet = KnownSamplesPacket.decode(buf);
-            client.execute(() -> {
-                if (client.getConnection() == handler) KnownSamples.set(packet.items(), packet.anyBlock());
-            });
+        ClientPlayNetworking.registerGlobalReceiver(KnownSamplesPacket.TYPE, (packet, context) -> {
+            if (context.client().getConnection() == context.player().connection) {
+                KnownSamples.set(packet.items(), packet.anyBlock());
+            }
         });
     }
 }

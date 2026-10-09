@@ -10,7 +10,7 @@ import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
-import net.fabricmc.fabric.api.screenhandler.v1.ScreenHandlerRegistry;
+import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerType;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
@@ -30,8 +30,8 @@ public class OreSense implements ModInitializer {
                     new Item.Properties().stacksTo(1)));
 
     public static final MenuType<OreSensorMenu> ORE_SENSOR_MENU =
-            ScreenHandlerRegistry.registerExtended(new ResourceLocation(MODID, "ore_sensor"),
-                    OreSensorMenu::fromNetwork);
+            Registry.register(BuiltInRegistries.MENU, new ResourceLocation(MODID, "ore_sensor"),
+                    new ExtendedScreenHandlerType<>(OreSensorMenu::new, OreSensorMenu.HAND_CODEC));
 
     @Override
     public void onInitialize() {

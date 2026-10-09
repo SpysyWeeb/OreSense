@@ -2,7 +2,8 @@ package com.spysyweeb.oresense.menu;
 
 import com.spysyweeb.oresense.OreSense;
 import com.spysyweeb.oresense.OreSensorItem;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.core.registries.Registries;
@@ -44,9 +45,8 @@ public class OreSensorMenu extends AbstractContainerMenu {
      */
     private final Container charges = new SimpleContainer(1);
 
-    public static OreSensorMenu fromNetwork(int id, Inventory inv, FriendlyByteBuf buf) {
-        return new OreSensorMenu(id, inv, buf.readEnum(InteractionHand.class));
-    }
+    public static final StreamCodec<RegistryFriendlyByteBuf, InteractionHand> HAND_CODEC =
+            StreamCodec.of((buf, hand) -> buf.writeEnum(hand), buf -> buf.readEnum(InteractionHand.class));
 
     public OreSensorMenu(int id, Inventory inv, InteractionHand hand) {
         super(OreSense.ORE_SENSOR_MENU, id);

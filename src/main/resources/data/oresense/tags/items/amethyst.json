@@ -13,6 +13,10 @@
     {
       "id": "#forge:gems/amethyst",
       "required": false
+    },
+    {
+      "id": "#c:gems/amethyst",
+      "required": false
     }
   ]
 }

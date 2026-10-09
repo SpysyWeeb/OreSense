@@ -6,7 +6,7 @@ import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.core.registries.Registries;
-import net.minecraft.world.level.storage.loot.LootDataManager;
+import net.minecraft.server.ReloadableServerRegistries;
 import com.spysyweeb.oresense.OreSense;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.BlockItem;
@@ -15,6 +15,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.Block;
@@ -44,7 +45,7 @@ public final class SampleResolver {
      * recipes and loot after the new resources have been installed.
      */
     private static RecipeManager builtRecipes;
-    private static LootDataManager builtLoot;
+    private static ReloadableServerRegistries.Holder builtLoot;
 
     private SampleResolver() {}
 
@@ -102,7 +103,7 @@ public final class SampleResolver {
 
     private static Map<Item, Set<Block>> byProduct(ServerLevel level) {
         RecipeManager recipes = level.getRecipeManager();
-        LootDataManager loot = level.getServer().getLootData();
+        ReloadableServerRegistries.Holder loot = level.getServer().reloadableRegistries();
         if (itemToOres != null && builtRecipes == recipes && builtLoot == loot) return itemToOres;
 
         // seed: each ore block's own item, and everything the ore drops, stand for that ore
@@ -176,8 +177,9 @@ public final class SampleResolver {
      * Smelting and blasting: the ingredient becomes the result. One way only, so smelting an
      * iron pickaxe into nuggets never makes the pickaxe a sample.
      */
-    private static void linkCooking(List<? extends Recipe<?>> recipes, RegistryAccess access, Map<Item, Set<Item>> links) {
-        for (Recipe<?> recipe : recipes) {
+    private static void linkCooking(List<? extends RecipeHolder<? extends Recipe<?>>> recipes, RegistryAccess access, Map<Item, Set<Item>> links) {
+        for (RecipeHolder<? extends Recipe<?>> holder : recipes) {
+            Recipe<?> recipe = holder.value();
             try {
                 ItemStack result = recipe.getResultItem(access);
                 List<Ingredient> ingredients = recipe.getIngredients();
@@ -197,8 +199,9 @@ public final class SampleResolver {
      * with two sources from joining them; blue dye comes from lapis and from cornflowers, so a
      * cornflower must not find lapis ore. Recipes that mix materials link nothing.
      */
-    private static void linkCrafting(List<? extends Recipe<?>> recipes, RegistryAccess access, Map<Item, Set<Item>> links) {
-        for (Recipe<?> recipe : recipes) {
+    private static void linkCrafting(List<? extends RecipeHolder<? extends Recipe<?>>> recipes, RegistryAccess access, Map<Item, Set<Item>> links) {
+        for (RecipeHolder<? extends Recipe<?>> holder : recipes) {
+            Recipe<?> recipe = holder.value();
             try {
                 if (recipe.isSpecial()) continue;
                 ItemStack result = recipe.getResultItem(access);
