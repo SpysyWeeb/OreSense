@@ -2,7 +2,7 @@
 
 ## 1.0.2 — 2026-10-09
 
-- Added Minecraft 1.21.10 support with Fabric Loader and Fabric API.
+- Added Quilt support for Minecraft 1.21.10 with Quilt Loader and Fabric API.
 - Adapted the animated dial and flat sample display to the new rendering system.
 - Preserved stored samples and charge when upgrading worlds to the new item component format.
 - Added support for modern Fabric common material tags.
