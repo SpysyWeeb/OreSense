@@ -19,7 +19,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;
 import net.fabricmc.fabric.api.item.v1.FabricItem;
 import net.minecraft.world.inventory.AbstractContainerMenu;
@@ -249,14 +249,14 @@ public class OreSensorItem extends Item implements FabricItem {
      * counts as having found it and spends its charge; otherwise nothing is spent.
      */
     @Override
-    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+    public InteractionResult use(Level level, Player player, InteractionHand hand) {
         ItemStack sensor = player.getItemInHand(hand);
         if (!level.isClientSide) SensorData.migrateSample(sensor, level.registryAccess());
         if (player.isSecondaryUseActive() && isLocked(sensor)) {
             if (level instanceof ServerLevel serverLevel && player instanceof ServerPlayer serverPlayer) {
                 releaseByHand(serverLevel, serverPlayer, sensor);
             }
-            return InteractionResultHolder.sidedSuccess(sensor, level.isClientSide());
+            return InteractionResult.SUCCESS;
         }
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
             serverPlayer.openMenu(new ExtendedScreenHandlerFactory<InteractionHand>() {
@@ -276,7 +276,7 @@ public class OreSensorItem extends Item implements FabricItem {
                 }
             });
         }
-        return InteractionResultHolder.sidedSuccess(sensor, level.isClientSide());
+        return InteractionResult.SUCCESS;
     }
 
     private static void releaseByHand(ServerLevel level, ServerPlayer player, ItemStack sensor) {

@@ -27,7 +27,7 @@ public class OreSense implements ModInitializer {
 
     public static final Item ORE_SENSOR = Registry.register(BuiltInRegistries.ITEM,
             ResourceLocation.fromNamespaceAndPath(MODID, "ore_sensor"), new OreSensorItem(
-                    new Item.Properties().stacksTo(1)));
+                    new Item.Properties().setId(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.ITEM, net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(MODID, "ore_sensor"))).stacksTo(1)));
 
     public static final MenuType<OreSensorMenu> ORE_SENSOR_MENU =
             Registry.register(BuiltInRegistries.MENU, ResourceLocation.fromNamespaceAndPath(MODID, "ore_sensor"),

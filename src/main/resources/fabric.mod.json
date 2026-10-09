@@ -9,7 +9,7 @@
   ],
   "contact": {
     "homepage": "https://github.com/SpysyWeeb/OreSense",
-    "sources": "https://github.com/SpysyWeeb/OreSense/tree/Fabric-1.21.1",
+    "sources": "https://github.com/SpysyWeeb/OreSense/tree/Fabric-1.21.3",
     "issues": "https://github.com/SpysyWeeb/OreSense/issues"
   },
   "license": "MIT",
@@ -28,8 +28,8 @@
   ],
   "depends": {
     "fabricloader": ">=0.19.5",
-    "fabric": ">=0.116.17",
-    "minecraft": "1.21.1",
+    "fabric": ">=0.114.1",
+    "minecraft": "1.21.3",
     "java": ">=21"
   }
 }

@@ -6,15 +6,9 @@
     "GAG"
   ],
   "key": {
-    "G": {
-      "tag": "oresense:ingots/gold"
-    },
-    "A": {
-      "item": "minecraft:amethyst_shard"
-    },
-    "I": {
-      "tag": "oresense:ingots/iron"
-    }
+    "G": "#oresense:ingots/gold",
+    "A": "minecraft:amethyst_shard",
+    "I": "#oresense:ingots/iron"
   },
   "result": {
     "id": "oresense:ore_sensor"
