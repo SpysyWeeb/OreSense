@@ -133,9 +133,9 @@ public final class SampleResolver {
         Map<Item, Set<Item>> links = new HashMap<>();
         RecipeManager recipes = level.getRecipeManager();
         RegistryAccess access = level.registryAccess();
-        linkCooking(recipes.getAllRecipesFor(RecipeType.SMELTING), access, links);
-        linkCooking(recipes.getAllRecipesFor(RecipeType.BLASTING), access, links);
-        linkCrafting(recipes.getAllRecipesFor(RecipeType.CRAFTING), access, links);
+        linkCooking(recipes.getAllRecipesFor(RecipeType.SMELTING).stream().map(net.minecraft.world.item.crafting.RecipeHolder::value).toList(), access, links);
+        linkCooking(recipes.getAllRecipesFor(RecipeType.BLASTING).stream().map(net.minecraft.world.item.crafting.RecipeHolder::value).toList(), access, links);
+        linkCrafting(recipes.getAllRecipesFor(RecipeType.CRAFTING).stream().map(net.minecraft.world.item.crafting.RecipeHolder::value).toList(), access, links);
 
         // carry the ores along the links until nothing changes; a pass that changes something
         // adds at least one (item, ore) pair and there are finitely many, so this ends

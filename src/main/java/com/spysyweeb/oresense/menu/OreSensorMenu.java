@@ -33,7 +33,7 @@ public class OreSensorMenu extends AbstractContainerMenu {
     private final int sensorSlot;
     private final Container sample = new SimpleContainer(1);
     /**
-     * A view of the sensor's Charges as a stack of shards. The shards live in the sensor's NBT
+     * A view of the sensor's Charges as a stack of shards. The shards live in the sensor's custom data component
      * at all times: the slot is filled from it on open and writes every change straight back,
      * so closing the screen, however that happens, has nothing left in the slot to lose.
      */

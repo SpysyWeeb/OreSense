@@ -2,6 +2,9 @@
 
 ## 1.0.2 — 2026-10-09
 
+- Added Minecraft 1.20.6 support for Forge 50.2.0 with Java 21.
+- Adapted sensor storage to item components, including migration of samples saved by earlier versions.
+
 - Renamed the sensor menu's Ore slot to Sample to reflect that it also accepts ore drops and items made
   from them.
 - Updated the empty sensor tooltip and instructions to use the same sample terminology.

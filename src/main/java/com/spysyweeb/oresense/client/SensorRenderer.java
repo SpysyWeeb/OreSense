@@ -272,7 +272,7 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
                             Float.intBitsToFloat(v[o + IQuadTransformer.UV0 + 1]))
                         .overlayCoords(overlay)
                         .uv2(light)
-                        .normal(dial.normal(), 0f, 0f, 1f)
+                        .normal(dial, 0f, 0f, 1f)
                         .endVertex();
             }
         }

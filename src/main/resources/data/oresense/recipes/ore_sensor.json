@@ -7,5 +7,5 @@
     "A": { "item": "minecraft:amethyst_shard" },
     "I": { "tag": "forge:ingots/iron" }
   },
-  "result": { "item": "oresense:ore_sensor" }
+  "result": { "id": "oresense:ore_sensor" }
 }
