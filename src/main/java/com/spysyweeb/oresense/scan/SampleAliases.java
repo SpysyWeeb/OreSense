@@ -4,7 +4,7 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
-import com.mojang.logging.LogUtils;
+import org.apache.logging.log4j.LogManager;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
@@ -15,7 +15,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraftforge.registries.ForgeRegistries;
-import org.slf4j.Logger;
+import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nullable;
 
@@ -37,7 +37,7 @@ import java.util.Set;
  */
 public final class SampleAliases extends SimpleJsonResourceReloadListener {
     public static final String DIRECTORY = "sample_aliases";
-    private static final Logger LOGGER = LogUtils.getLogger();
+    private static final Logger LOGGER = LogManager.getLogger();
     private static final Gson GSON = new GsonBuilder().create();
 
     /** Replaced whole by each reload, so a reader always sees one complete load. */

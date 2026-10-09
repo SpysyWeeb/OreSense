@@ -1,7 +1,7 @@
 package com.spysyweeb.oresense.scan;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.server.ReloadableServerResources;
+import net.minecraft.server.ServerResources;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
@@ -35,14 +35,14 @@ public final class SampleResolver {
     private static Map<Item, Set<Block>> itemToOres = null;
     /**
      * The data the map was built from. Loot tables, recipes and tags all live in one
-     * ReloadableServerResources, and /reload swaps in a new one on the server thread (in
+     * ServerResources, and /reload swaps in a new one on the server thread (in
      * MinecraftServer.reloadResources) before it re-tags the registries and resyncs players.
      * Keying the map on that object means it always matches the data the server is using,
      * whatever runs while a reload is in flight: a command-started reload waits in
      * managedBlock, which keeps running queued packets, and a sample-slot click among them
      * resolves against the old data that is still live at that moment.
      */
-    private static ReloadableServerResources builtFrom = null;
+    private static ServerResources builtFrom = null;
 
     private SampleResolver() {}
 
@@ -99,7 +99,7 @@ public final class SampleResolver {
     }
 
     private static Map<Item, Set<Block>> byProduct(ServerLevel level) {
-        ReloadableServerResources data = level.getServer().getServerResources().managers();
+        ServerResources data = level.getServer().getServerResources();
         if (itemToOres != null && builtFrom == data) return itemToOres;
 
         // seed: each ore block's own item, and everything the ore drops, stand for that ore

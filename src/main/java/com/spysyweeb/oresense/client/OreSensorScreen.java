@@ -7,6 +7,7 @@ import com.spysyweeb.oresense.menu.OreSensorMenu;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
@@ -17,8 +18,8 @@ public class OreSensorScreen extends AbstractContainerScreen<OreSensorMenu> {
     private static final ResourceLocation TEXTURE = new ResourceLocation(OreSense.MODID, "textures/gui/ore_sensor.png");
     // each slot's name, left of it in vanilla's label style (AbstractContainerScreen.renderLabels
     // draws the title and "Inventory" in 0x404040 without a shadow)
-    private static final Component CHARGES_LABEL = Component.translatable("oresense.gui.charges");
-    private static final Component SAMPLE_LABEL = Component.translatable("oresense.gui.sample");
+    private static final Component CHARGES_LABEL = new TranslatableComponent("oresense.gui.charges");
+    private static final Component SAMPLE_LABEL = new TranslatableComponent("oresense.gui.sample");
     private static final int LABEL_COLOUR = 0x404040;
     private static final int LABEL_GAP = 4;       // px from a label's right end to its slot's frame
 

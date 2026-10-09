@@ -30,7 +30,7 @@ public final class OreSenseNetwork {
         CHANNEL.messageBuilder(KnownSamplesPacket.class, 0, NetworkDirection.PLAY_TO_CLIENT)
                 .encoder(KnownSamplesPacket::encode)
                 .decoder(KnownSamplesPacket::decode)
-                .consumerMainThread(KnownSamplesPacket::handle)
+                .consumer(KnownSamplesPacket::handle)
                 .add();
     }
 
