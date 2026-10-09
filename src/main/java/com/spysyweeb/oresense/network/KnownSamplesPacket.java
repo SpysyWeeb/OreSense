@@ -16,7 +16,7 @@ import java.util.Set;
 
 /** Server to client: the items the sample slot accepts, and whether any block goes too. */
 public record KnownSamplesPacket(Set<Item> items, boolean anyBlock) implements CustomPacketPayload {
-    public static final Type<KnownSamplesPacket> TYPE = new Type<>(new ResourceLocation(OreSense.MODID, "known_samples"));
+    public static final Type<KnownSamplesPacket> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(OreSense.MODID, "known_samples"));
     public static final StreamCodec<RegistryFriendlyByteBuf, KnownSamplesPacket> STREAM_CODEC =
             StreamCodec.of((buf, packet) -> encode(packet, buf), KnownSamplesPacket::decode);
 

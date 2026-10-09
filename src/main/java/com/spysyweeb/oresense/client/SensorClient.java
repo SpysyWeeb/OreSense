@@ -4,14 +4,14 @@ import com.spysyweeb.oresense.Config;
 import com.spysyweeb.oresense.OreSense;
 import com.spysyweeb.oresense.OreSensorItem;
 import com.spysyweeb.oresense.scan.Signal;
-import net.fabricmc.fabric.api.client.model.ModelLoadingRegistry;
+import net.fabricmc.fabric.api.client.model.loading.v1.ModelLoadingPlugin;
 import net.fabricmc.fabric.api.client.rendering.v1.BuiltinItemRendererRegistry;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.item.ItemDisplayContext;
-import net.minecraft.client.resources.model.ModelResourceLocation;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
@@ -25,16 +25,16 @@ public class SensorClient {
     /** Needle frames: frame i points 11.25 degrees * i clockwise from straight up, like the vanilla compass. */
     public static final int NEEDLE_FRAMES = 32;
 
-    public static final ModelResourceLocation BASE = layer("ore_sensor_base");
+    public static final ResourceLocation BASE = layer("ore_sensor_base");
     /** The lit lamps in the rim: 12 o'clock = the target is above, 6 o'clock = below. */
-    public static final ModelResourceLocation LAMP_UP = layer("ore_sensor_lamp_up");
-    public static final ModelResourceLocation LAMP_DOWN = layer("ore_sensor_lamp_down");
+    public static final ResourceLocation LAMP_UP = layer("ore_sensor_lamp_up");
+    public static final ResourceLocation LAMP_DOWN = layer("ore_sensor_lamp_down");
     /** NO_CHARGE: the four gauge cells in red. */
-    public static final ModelResourceLocation EMPTY = layer("ore_sensor_empty");
-    private static final ModelResourceLocation[] NEEDLE = numbered("ore_sensor_needle_", NEEDLE_FRAMES);
-    private static final ModelResourceLocation[] TAIL = numbered("ore_sensor_tail_", NEEDLE_FRAMES);
-    private static final ModelResourceLocation[] SONAR = numbered("ore_sensor_sonar_", SONAR_RINGS);
-    private static final ModelResourceLocation[] CHARGE = numbered("ore_sensor_charge_", CHARGE_CELLS);
+    public static final ResourceLocation EMPTY = layer("ore_sensor_empty");
+    private static final ResourceLocation[] NEEDLE = numbered("ore_sensor_needle_", NEEDLE_FRAMES);
+    private static final ResourceLocation[] TAIL = numbered("ore_sensor_tail_", NEEDLE_FRAMES);
+    private static final ResourceLocation[] SONAR = numbered("ore_sensor_sonar_", SONAR_RINGS);
+    private static final ResourceLocation[] CHARGE = numbered("ore_sensor_charge_", CHARGE_CELLS);
 
     /**
      * DORMANT: no sample, nobody is scanning with it, or it is not in the local player's view
@@ -65,42 +65,42 @@ public class SensorClient {
     private static double rotation = 0.0, prevRotation = 0.0, delta = 0.0;
     private static long lastTick = 0;
 
-    public static ModelResourceLocation needle(int frame) {
+    public static ResourceLocation needle(int frame) {
         return NEEDLE[frame];
     }
 
-    public static ModelResourceLocation tail(int frame) {
+    public static ResourceLocation tail(int frame) {
         return TAIL[frame];
     }
 
-    public static ModelResourceLocation sonar(int ring) {
+    public static ResourceLocation sonar(int ring) {
         return SONAR[ring];
     }
 
-    public static ModelResourceLocation charge(int cell) {
+    public static ResourceLocation charge(int cell) {
         return CHARGE[cell];
     }
 
-    private static ModelResourceLocation layer(String name) {
-        return new ModelResourceLocation(OreSense.MODID, name, "inventory");
+    private static ResourceLocation layer(String name) {
+        return ResourceLocation.fromNamespaceAndPath(OreSense.MODID, "item/" + name);
     }
 
-    private static ModelResourceLocation[] numbered(String prefix, int count) {
-        ModelResourceLocation[] models = new ModelResourceLocation[count];
+    private static ResourceLocation[] numbered(String prefix, int count) {
+        ResourceLocation[] models = new ResourceLocation[count];
         for (int i = 0; i < count; i++) models[i] = layer(String.format(Locale.ROOT, "%s%02d", prefix, i));
         return models;
     }
 
     public static void registerModels() {
-        ModelLoadingRegistry.INSTANCE.registerModelProvider((manager, out) -> {
-            out.accept(BASE);
-            out.accept(LAMP_UP);
-            out.accept(LAMP_DOWN);
-            out.accept(EMPTY);
-            for (ModelResourceLocation frame : NEEDLE) out.accept(frame);
-            for (ModelResourceLocation frame : TAIL) out.accept(frame);
-            for (ModelResourceLocation ring : SONAR) out.accept(ring);
-            for (ModelResourceLocation cell : CHARGE) out.accept(cell);
+        ModelLoadingPlugin.register(context -> {
+            context.addModels(BASE);
+            context.addModels(LAMP_UP);
+            context.addModels(LAMP_DOWN);
+            context.addModels(EMPTY);
+            for (ResourceLocation frame : NEEDLE) context.addModels(frame);
+            for (ResourceLocation frame : TAIL) context.addModels(frame);
+            for (ResourceLocation ring : SONAR) context.addModels(ring);
+            for (ResourceLocation cell : CHARGE) context.addModels(cell);
         });
     }
 
@@ -151,7 +151,7 @@ public class SensorClient {
 
             double dx = (target.getX() + 0.5) - player.getX();
             double dz = (target.getZ() + 0.5) - player.getZ();
-            double facing = Math.toRadians(player.getViewYRot(mc.getFrameTime()) + 90.0);
+            double facing = Math.toRadians(player.getViewYRot(mc.getTimer().getGameTimeDeltaPartialTick(true)) + 90.0);
             want = wrap((Math.atan2(dz, dx) - facing) / (Math.PI * 2.0));
 
             int sign = Signal.verticalSign(target.getY() - player.blockPosition().getY());
@@ -174,7 +174,7 @@ public class SensorClient {
         if (state != State.DORMANT) {
             // the shortest way from the last step's start to its end (the step is |delta| < 0.5)
             double step = wrap(rotation - prevRotation + 0.5) - 0.5;
-            angle = (float) wrap(prevRotation + mc.getFrameTime() * step);
+            angle = (float) wrap(prevRotation + mc.getTimer().getGameTimeDeltaPartialTick(true) * step);
         }
         return new Reading(state, angle, vertical, sample, lost, paid, closeness, charges);
     }

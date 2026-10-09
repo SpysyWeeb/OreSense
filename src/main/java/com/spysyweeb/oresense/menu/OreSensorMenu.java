@@ -21,7 +21,7 @@ import net.minecraft.world.InteractionHand;
 
 public class OreSensorMenu extends AbstractContainerMenu {
     // Our tag includes vanilla amethyst and optional common/modded equivalents.
-    private static final TagKey<Item> AMETHYST_TAG = TagKey.create(Registries.ITEM, new ResourceLocation(OreSense.MODID, "amethyst"));
+    private static final TagKey<Item> AMETHYST_TAG = TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(OreSense.MODID, "amethyst"));
     /**
      * Menu slots: the sample, the charges, then inventory 9..35 and hotbar 0..8. On screen the
      * charges sit on the left and the sample on the right, each with a label (OreSensorScreen);

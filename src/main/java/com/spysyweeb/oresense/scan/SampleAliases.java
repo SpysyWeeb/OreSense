@@ -51,7 +51,7 @@ public final class SampleAliases extends SimpleJsonResourceReloadListener implem
 
     @Override
     public ResourceLocation getFabricId() {
-        return new ResourceLocation(OreSense.MODID, DIRECTORY);
+        return ResourceLocation.fromNamespaceAndPath(OreSense.MODID, DIRECTORY);
     }
 
     /** The blocks an item stands for through an alias; empty when it has none. */

@@ -38,7 +38,7 @@ import java.util.*;
  */
 public final class SampleResolver {
     private static Map<Item, Set<Block>> itemToOres = null;
-    private static final TagKey<Block> ORE_TAG = TagKey.create(Registries.BLOCK, new ResourceLocation(OreSense.MODID, "ores"));
+    private static final TagKey<Block> ORE_TAG = TagKey.create(Registries.BLOCK, ResourceLocation.fromNamespaceAndPath(OreSense.MODID, "ores"));
     /**
      * /reload replaces both managers when the newly loaded resources become live. Checking
      * their identities keeps a sample click during an in-flight reload from caching old

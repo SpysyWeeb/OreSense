@@ -14,7 +14,7 @@ import net.minecraft.server.level.ServerPlayer;
 /** Required login handshake, then the server's accepted-sample list during play. */
 public final class OreSenseNetwork {
     static final int PROTOCOL = 1;
-    static final ResourceLocation HANDSHAKE = new ResourceLocation(OreSense.MODID, "handshake");
+    static final ResourceLocation HANDSHAKE = ResourceLocation.fromNamespaceAndPath(OreSense.MODID, "handshake");
 
     private OreSenseNetwork() {}
 

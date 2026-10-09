@@ -26,11 +26,11 @@ public class OreSense implements ModInitializer {
     public static final String MODID = "oresense";
 
     public static final Item ORE_SENSOR = Registry.register(BuiltInRegistries.ITEM,
-            new ResourceLocation(MODID, "ore_sensor"), new OreSensorItem(
+            ResourceLocation.fromNamespaceAndPath(MODID, "ore_sensor"), new OreSensorItem(
                     new Item.Properties().stacksTo(1)));
 
     public static final MenuType<OreSensorMenu> ORE_SENSOR_MENU =
-            Registry.register(BuiltInRegistries.MENU, new ResourceLocation(MODID, "ore_sensor"),
+            Registry.register(BuiltInRegistries.MENU, ResourceLocation.fromNamespaceAndPath(MODID, "ore_sensor"),
                     new ExtendedScreenHandlerType<>(OreSensorMenu::new, OreSensorMenu.HAND_CODEC));
 
     @Override

@@ -34,7 +34,7 @@ import net.minecraft.util.RandomSource;
  * lamp), then the sample sitting in the window at the centre so you can see what it is hunting for.
  */
 public class SensorRenderer {
-    private static final int VERTEX_STRIDE = DefaultVertexFormat.BLOCK.getIntegerSize();
+    private static final int VERTEX_STRIDE = DefaultVertexFormat.BLOCK.getVertexSize() / Integer.BYTES;
     private static final int POSITION_OFFSET = elementOffset(0);
     private static final int COLOR_OFFSET = elementOffset(1);
     private static final int UV_OFFSET = elementOffset(2);
@@ -42,7 +42,7 @@ public class SensorRenderer {
     /** Vanilla exposes the elements, but not Forge's precomputed byte offsets. */
     private static int elementOffset(int element) {
         int bytes = 0;
-        for (int i = 0; i < element; i++) bytes += DefaultVertexFormat.BLOCK.getElements().get(i).getByteSize();
+        for (int i = 0; i < element; i++) bytes += DefaultVertexFormat.BLOCK.getElements().get(i).byteSize();
         return bytes / Integer.BYTES;
     }
 
@@ -280,14 +280,13 @@ public class SensorRenderer {
                         Float.intBitsToFloat(v[o + POSITION_OFFSET + 2]) - 0.5f, 1f);
                 p.mul(place);
                 int c = v[o + COLOR_OFFSET];  // R,G,B,A bytes, R in the low byte
-                vc.vertex(dial.pose(), p.x(), p.y(), p.z() * DECAL_DEPTH)  // pressed onto the socket
-                        .color(r * (c & 255) / 255f, g * (c >> 8 & 255) / 255f, b * (c >> 16 & 255) / 255f, 1f)
-                        .uv(Float.intBitsToFloat(v[o + UV_OFFSET]),
+                vc.addVertex(dial.pose(), p.x(), p.y(), p.z() * DECAL_DEPTH)  // pressed onto the socket
+                        .setColor(r * (c & 255) / 255f, g * (c >> 8 & 255) / 255f, b * (c >> 16 & 255) / 255f, 1f)
+                        .setUv(Float.intBitsToFloat(v[o + UV_OFFSET]),
                             Float.intBitsToFloat(v[o + UV_OFFSET + 1]))
-                        .overlayCoords(overlay)
-                        .uv2(light)
-                        .normal(dial, 0f, 0f, 1f)
-                        .endVertex();
+                        .setOverlay(overlay)
+                        .setLight(light)
+                        .setNormal(dial, 0f, 0f, 1f);
             }
         }
     }
@@ -355,17 +354,16 @@ public class SensorRenderer {
         Direction face = quad.getDirection();
         int[] vertices = quad.getVertices();
         for (int o = 0; o < vertices.length; o += VERTEX_STRIDE) {
-            vc.vertex(pose.pose(),
+            vc.addVertex(pose.pose(),
                             Float.intBitsToFloat(vertices[o + POSITION_OFFSET]),
                             Float.intBitsToFloat(vertices[o + POSITION_OFFSET + 1]),
                             Float.intBitsToFloat(vertices[o + POSITION_OFFSET + 2]))
-                    .color(r, g, b, a)
-                    .uv(Float.intBitsToFloat(vertices[o + UV_OFFSET]),
+                    .setColor(r, g, b, a)
+                    .setUv(Float.intBitsToFloat(vertices[o + UV_OFFSET]),
                             Float.intBitsToFloat(vertices[o + UV_OFFSET + 1]))
-                    .overlayCoords(overlay)
-                    .uv2(light)
-                    .normal(pose, face.getStepX(), face.getStepY(), face.getStepZ())
-                    .endVertex();
+                    .setOverlay(overlay)
+                    .setLight(light)
+                    .setNormal(pose, face.getStepX(), face.getStepY(), face.getStepZ());
         }
     }
 }
