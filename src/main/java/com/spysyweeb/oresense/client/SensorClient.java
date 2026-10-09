@@ -8,10 +8,10 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.renderer.block.model.ItemTransforms.TransformType;
 import net.minecraft.client.resources.model.ModelResourceLocation;
 import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
-import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ModelEvent;
@@ -113,7 +113,7 @@ public class SensorClient {
     }
 
     /** Works out what this stack's dial shows right now, easing the needle toward the live reading. */
-    public static Reading read(ItemStack stack, ItemDisplayContext context) {
+    public static Reading read(ItemStack stack, TransformType context) {
         ItemStack sample = OreSensorItem.getSample(stack);
         int charges = OreSensorItem.getCharges(stack);
         Minecraft mc = Minecraft.getInstance();
@@ -187,9 +187,9 @@ public class SensorClient {
      * held sensor also renders in a third-person context, but it is a different stack object than
      * the local player's hand items, so it stays dormant instead of steering the shared needle.
      */
-    private static boolean isLocalView(ItemStack stack, ItemDisplayContext context, LocalPlayer player) {
-        if (context == ItemDisplayContext.GUI || context.firstPerson()) return true;
-        if (context == ItemDisplayContext.THIRD_PERSON_LEFT_HAND || context == ItemDisplayContext.THIRD_PERSON_RIGHT_HAND) {
+    private static boolean isLocalView(ItemStack stack, TransformType context, LocalPlayer player) {
+        if (context == TransformType.GUI || context.firstPerson()) return true;
+        if (context == TransformType.THIRD_PERSON_LEFT_HAND || context == TransformType.THIRD_PERSON_RIGHT_HAND) {
             return stack == player.getMainHandItem() || stack == player.getOffhandItem();
         }
         return false;

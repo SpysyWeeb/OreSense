@@ -10,13 +10,13 @@ import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.renderer.block.model.ItemTransforms.TransformType;
 import net.minecraft.client.renderer.entity.ItemRenderer;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.client.resources.model.ModelManager;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
 import net.minecraft.util.RandomSource;
-import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.client.model.IQuadTransformer;
@@ -88,7 +88,7 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
     }
 
     @Override
-    public void renderByItem(ItemStack stack, ItemDisplayContext context, PoseStack pose,
+    public void renderByItem(ItemStack stack, TransformType context, PoseStack pose,
                              MultiBufferSource buffer, int light, int overlay) {
         Minecraft mc = Minecraft.getInstance();
         ModelManager models = mc.getModelManager();
@@ -166,8 +166,8 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
         if (flat) {
             drawFlatIcon(pose, buffer, mc, sample, model, light, overlay);
         } else {
-            mc.getItemRenderer().renderStatic(sample, ItemDisplayContext.GUI, light, overlay,
-                    pose, buffer, mc.level, 0);
+            mc.getItemRenderer().renderStatic(null, sample, TransformType.GUI, false,
+                    pose, buffer, mc.level, light, overlay, 0);
         }
         pose.popPose();
     }
@@ -227,7 +227,7 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
     private static void drawFlatIcon(PoseStack ps, MultiBufferSource buffer, Minecraft mc,
                                      ItemStack sample, BakedModel model, int light, int overlay) {
         PoseStack gui = new PoseStack();
-        model.getTransforms().getTransform(ItemDisplayContext.GUI).apply(false, gui);
+        model.getTransforms().getTransform(TransformType.GUI).apply(false, gui);
         Matrix4f place = gui.last().pose();
         Matrix3f turn = gui.last().normal();
 

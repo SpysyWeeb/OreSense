@@ -13,10 +13,8 @@ import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
@@ -42,10 +40,9 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 public class OreSensorItem extends Item {
-    // 1.19.4 ships this sound asset but has no SoundEvents constant or registry entry for it.
-    // playNotifySound sends an unregistered event by location, which the client can resolve.
-    private static final SoundEvent AMETHYST_RESONANCE = SoundEvent.createVariableRangeEvent(
-            new ResourceLocation("minecraft", "block.amethyst_block.resonate"));
+    // 1.19.3 has no amethyst resonance asset. Use its chime and compensate for the
+    // 0.2 volume in vanilla's sounds.json so lock/release keep their intended loudness.
+    private static final float AMETHYST_CHIME_VOLUME_SCALE = 5.0f;
 
     public static final String SAMPLE_TAG = "Sample";
     private static final String TARGET_TAG = "Target";      // [x,y,z]: the block the needle points at
@@ -300,7 +297,8 @@ public class OreSensorItem extends Item {
             release(level, sensor, true, blocks, remaining, targets);
         }
         miss(sensor, level, Config.INSTANCE.horizontalRange.get());
-        player.playNotifySound(AMETHYST_RESONANCE, SoundSource.PLAYERS, 0.8f, 0.6f);
+        player.playNotifySound(SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.PLAYERS,
+                0.8f * AMETHYST_CHIME_VOLUME_SCALE, 0.6f);
     }
 
     // ---- server check ----
@@ -369,8 +367,9 @@ public class OreSensorItem extends Item {
         newLock.putBoolean(LOCK_PAID, false);
         tag.put(LOCK_TAG, newLock);
         hit(sensor, level, result.nearest(), result.nearestDistance(), hRange);
-        // Use the same resonance as manual release, at a higher pitch for a new lock.
-        player.playNotifySound(AMETHYST_RESONANCE, SoundSource.PLAYERS, 1.0f, 1.2f);
+        // Use the same chime as manual release, at a higher pitch for a new lock.
+        player.playNotifySound(SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.PLAYERS,
+                AMETHYST_CHIME_VOLUME_SCALE, 1.2f);
         showReading(player, center, result.nearest(), result.nearestDistance(), hRange, vein.size());
     }
 

@@ -1,7 +1,6 @@
 package com.spysyweeb.oresense.scan;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.RegistryAccess;
 import net.minecraft.server.ReloadableServerResources;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.BlockItem;
@@ -132,10 +131,9 @@ public final class SampleResolver {
         // material links from the server's recipes: item -> the items made purely of it
         Map<Item, Set<Item>> links = new HashMap<>();
         RecipeManager recipes = level.getRecipeManager();
-        RegistryAccess access = level.registryAccess();
-        linkCooking(recipes.getAllRecipesFor(RecipeType.SMELTING), access, links);
-        linkCooking(recipes.getAllRecipesFor(RecipeType.BLASTING), access, links);
-        linkCrafting(recipes.getAllRecipesFor(RecipeType.CRAFTING), access, links);
+        linkCooking(recipes.getAllRecipesFor(RecipeType.SMELTING), links);
+        linkCooking(recipes.getAllRecipesFor(RecipeType.BLASTING), links);
+        linkCrafting(recipes.getAllRecipesFor(RecipeType.CRAFTING), links);
 
         // carry the ores along the links until nothing changes; a pass that changes something
         // adds at least one (item, ore) pair and there are finitely many, so this ends
@@ -174,11 +172,10 @@ public final class SampleResolver {
      * Smelting and blasting: the ingredient becomes the result. One way only, so smelting an
      * iron pickaxe into nuggets never makes the pickaxe a sample.
      */
-    private static void linkCooking(List<? extends Recipe<?>> recipes, RegistryAccess access,
-                                    Map<Item, Set<Item>> links) {
+    private static void linkCooking(List<? extends Recipe<?>> recipes, Map<Item, Set<Item>> links) {
         for (Recipe<?> recipe : recipes) {
             try {
-                ItemStack result = recipe.getResultItem(access);
+                ItemStack result = recipe.getResultItem();
                 List<Ingredient> ingredients = recipe.getIngredients();
                 if (result.isEmpty() || ingredients.isEmpty()) continue;
                 for (Item from : accepted(ingredients.get(0))) link(links, from, result.getItem());
@@ -196,12 +193,11 @@ public final class SampleResolver {
      * with two sources from joining them; blue dye comes from lapis and from cornflowers, so a
      * cornflower must not find lapis ore. Recipes that mix materials link nothing.
      */
-    private static void linkCrafting(List<? extends Recipe<?>> recipes, RegistryAccess access,
-                                     Map<Item, Set<Item>> links) {
+    private static void linkCrafting(List<? extends Recipe<?>> recipes, Map<Item, Set<Item>> links) {
         for (Recipe<?> recipe : recipes) {
             try {
                 if (recipe.isSpecial()) continue;
-                ItemStack result = recipe.getResultItem(access);
+                ItemStack result = recipe.getResultItem();
                 if (result.isEmpty()) continue;
                 Set<Item> material = null;
                 boolean pure = true;
