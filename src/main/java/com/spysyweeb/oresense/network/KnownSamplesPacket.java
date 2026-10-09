@@ -4,7 +4,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
 import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import com.spysyweeb.oresense.OreSense;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
@@ -16,7 +16,7 @@ import java.util.Set;
 
 /** Server to client: the items the sample slot accepts, and whether any block goes too. */
 public record KnownSamplesPacket(Set<Item> items, boolean anyBlock) implements CustomPacketPayload {
-    public static final Type<KnownSamplesPacket> TYPE = new Type<>(ResourceLocation.fromNamespaceAndPath(OreSense.MODID, "known_samples"));
+    public static final Type<KnownSamplesPacket> TYPE = new Type<>(Identifier.fromNamespaceAndPath(OreSense.MODID, "known_samples"));
     public static final StreamCodec<RegistryFriendlyByteBuf, KnownSamplesPacket> STREAM_CODEC =
             StreamCodec.of((buf, packet) -> encode(packet, buf), KnownSamplesPacket::decode);
 
@@ -26,7 +26,7 @@ public record KnownSamplesPacket(Set<Item> items, boolean anyBlock) implements C
 
     public static void encode(KnownSamplesPacket packet, FriendlyByteBuf buf) {
         buf.writeBoolean(packet.anyBlock);
-        buf.writeCollection(packet.items, (b, item) -> b.writeResourceLocation(BuiltInRegistries.ITEM.getKey(item)));
+        buf.writeCollection(packet.items, (b, item) -> b.writeIdentifier(BuiltInRegistries.ITEM.getKey(item)));
     }
 
     /**
@@ -36,7 +36,7 @@ public record KnownSamplesPacket(Set<Item> items, boolean anyBlock) implements C
      */
     public static KnownSamplesPacket decode(FriendlyByteBuf buf) {
         boolean anyBlock = buf.readBoolean();
-        Set<Item> items = buf.readCollection(HashSet::new, b -> BuiltInRegistries.ITEM.getValue(b.readResourceLocation()));
+        Set<Item> items = buf.readCollection(HashSet::new, b -> BuiltInRegistries.ITEM.getValue(b.readIdentifier()));
         items.remove(null);
         items.remove(Items.AIR);
         return new KnownSamplesPacket(items, anyBlock);

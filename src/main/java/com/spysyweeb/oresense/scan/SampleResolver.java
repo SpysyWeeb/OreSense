@@ -2,7 +2,7 @@ package com.spysyweeb.oresense.scan;
 
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.ReloadableServerRegistries;
@@ -39,7 +39,7 @@ import java.util.*;
  */
 public final class SampleResolver {
     private static Map<Item, Set<Block>> itemToOres = null;
-    private static final TagKey<Block> ORE_TAG = TagKey.create(Registries.BLOCK, ResourceLocation.fromNamespaceAndPath(OreSense.MODID, "ores"));
+    private static final TagKey<Block> ORE_TAG = TagKey.create(Registries.BLOCK, Identifier.fromNamespaceAndPath(OreSense.MODID, "ores"));
     /**
      * /reload replaces both managers when the newly loaded resources become live. Checking
      * their identities keeps a sample click during an in-flight reload from caching old
@@ -240,7 +240,7 @@ public final class SampleResolver {
      */
     private static Set<Item> accepted(Ingredient ingredient) {
         Set<Item> items = new HashSet<>();
-        for (var holder : ingredient.items()) {
+        for (var holder : ingredient.items().toList()) {
             Item item = holder.value();
             if (item != Items.AIR && item != Items.BARRIER) items.add(item);
         }

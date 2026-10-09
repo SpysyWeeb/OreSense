@@ -5,19 +5,19 @@ import com.spysyweeb.oresense.menu.OreSensorMenu;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
 
 public class OreSensorScreen extends AbstractContainerScreen<OreSensorMenu> {
     // the hopper layout with only the charge and sample slots (tools/gen_textures.py), on the
     // 256x256 canvas that the short blit form below assumes
-    private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(OreSense.MODID, "textures/gui/ore_sensor.png");
+    private static final Identifier TEXTURE = Identifier.fromNamespaceAndPath(OreSense.MODID, "textures/gui/ore_sensor.png");
     // each slot's name, left of it in vanilla's label style (AbstractContainerScreen.renderLabels
-    // draws the title and "Inventory" in 0x404040 without a shadow)
+    // draws the title and "Inventory" in 0xFF404040 without a shadow)
     private static final Component CHARGES_LABEL = Component.translatable("oresense.gui.charges");
     private static final Component SAMPLE_LABEL = Component.translatable("oresense.gui.sample");
-    private static final int LABEL_COLOUR = 0x404040;
+    private static final int LABEL_COLOUR = 0xFF404040;
     private static final int LABEL_GAP = 4;       // px from a label's right end to its slot's frame
 
     public OreSensorScreen(OreSensorMenu menu, Inventory inv, Component title) {
@@ -31,7 +31,7 @@ public class OreSensorScreen extends AbstractContainerScreen<OreSensorMenu> {
     protected void renderBg(GuiGraphics g, float partialTick, int mouseX, int mouseY) {
         int x = (width - imageWidth) / 2;
         int y = (height - imageHeight) / 2;
-        g.blit(net.minecraft.client.renderer.RenderType::guiTextured, TEXTURE, x, y, 0, 0, imageWidth, imageHeight, 256, 256);
+        g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, TEXTURE, x, y, 0, 0, imageWidth, imageHeight, 256, 256);
     }
 
     /** Runs with the pose already moved to the panel's top-left, like the title. */

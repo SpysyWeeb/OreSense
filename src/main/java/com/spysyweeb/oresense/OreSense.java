@@ -9,11 +9,11 @@ import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.fabric.api.event.player.PlayerBlockBreakEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
-import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
+import net.fabricmc.fabric.api.resource.v1.ResourceLoader;
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerType;
 import net.minecraft.core.Registry;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.packs.PackType;
@@ -26,11 +26,11 @@ public class OreSense implements ModInitializer {
     public static final String MODID = "oresense";
 
     public static final Item ORE_SENSOR = Registry.register(BuiltInRegistries.ITEM,
-            ResourceLocation.fromNamespaceAndPath(MODID, "ore_sensor"), new OreSensorItem(
-                    new Item.Properties().setId(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.ITEM, net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(MODID, "ore_sensor"))).stacksTo(1)));
+            Identifier.fromNamespaceAndPath(MODID, "ore_sensor"), new OreSensorItem(
+                    new Item.Properties().setId(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.ITEM, net.minecraft.resources.Identifier.fromNamespaceAndPath(MODID, "ore_sensor"))).stacksTo(1)));
 
     public static final MenuType<OreSensorMenu> ORE_SENSOR_MENU =
-            Registry.register(BuiltInRegistries.MENU, ResourceLocation.fromNamespaceAndPath(MODID, "ore_sensor"),
+            Registry.register(BuiltInRegistries.MENU, Identifier.fromNamespaceAndPath(MODID, "ore_sensor"),
                     new ExtendedScreenHandlerType<>(OreSensorMenu::new, OreSensorMenu.HAND_CODEC));
 
     @Override
@@ -38,7 +38,7 @@ public class OreSense implements ModInitializer {
         Config.load();
         ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.TOOLS_AND_UTILITIES).register(entries -> entries.accept(ORE_SENSOR));
         OreSenseNetwork.register();
-        ResourceManagerHelper.get(PackType.SERVER_DATA).registerReloadListener(new SampleAliases());
+        ResourceLoader.get(PackType.SERVER_DATA).registerReloader(Identifier.fromNamespaceAndPath(MODID, SampleAliases.DIRECTORY), new SampleAliases());
         ServerLifecycleEvents.START_DATA_PACK_RELOAD.register((server, resources) -> SampleResolver.invalidate());
         ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resources, success) -> {
             if (success) {

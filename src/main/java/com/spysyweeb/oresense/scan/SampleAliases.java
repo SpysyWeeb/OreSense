@@ -3,7 +3,7 @@ package com.spysyweeb.oresense.scan;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import org.apache.logging.log4j.LogManager;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.GsonHelper;
@@ -13,7 +13,6 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.core.registries.BuiltInRegistries;
-import net.fabricmc.fabric.api.resource.IdentifiableResourceReloadListener;
 import com.spysyweeb.oresense.OreSense;
 import org.apache.logging.log4j.Logger;
 
@@ -35,7 +34,7 @@ import java.util.Set;
  * up; a data pack that overrides a file with an empty block list removes that alias. Unknown
  * ids are logged and skipped. /reload reads the folder again.
  */
-public final class SampleAliases extends SimpleJsonResourceReloadListener<JsonElement> implements IdentifiableResourceReloadListener {
+public final class SampleAliases extends SimpleJsonResourceReloadListener<JsonElement> {
     public static final String DIRECTORY = "sample_aliases";
     private static final Logger LOGGER = LogManager.getLogger();
 
@@ -45,13 +44,9 @@ public final class SampleAliases extends SimpleJsonResourceReloadListener<JsonEl
     public SampleAliases() {
         super(com.mojang.serialization.Codec.PASSTHROUGH.xmap(
                 dynamic -> dynamic.convert(com.mojang.serialization.JsonOps.INSTANCE).getValue(),
-                json -> new com.mojang.serialization.Dynamic<>(com.mojang.serialization.JsonOps.INSTANCE, json)), DIRECTORY);
+                json -> new com.mojang.serialization.Dynamic<>(com.mojang.serialization.JsonOps.INSTANCE, json)), net.minecraft.resources.FileToIdConverter.json(DIRECTORY));
     }
 
-    @Override
-    public ResourceLocation getFabricId() {
-        return ResourceLocation.fromNamespaceAndPath(OreSense.MODID, DIRECTORY);
-    }
 
     /** The blocks an item stands for through an alias; empty when it has none. */
     public static Set<Block> blocksFor(Item item) {
@@ -64,7 +59,7 @@ public final class SampleAliases extends SimpleJsonResourceReloadListener<JsonEl
     }
 
     @Override
-    protected void apply(Map<ResourceLocation, JsonElement> files, ResourceManager manager, ProfilerFiller profiler) {
+    protected void apply(Map<Identifier, JsonElement> files, ResourceManager manager, ProfilerFiller profiler) {
         Map<Item, Set<Block>> loaded = new HashMap<>();
         files.forEach((file, json) -> {
             try {
@@ -104,7 +99,7 @@ public final class SampleAliases extends SimpleJsonResourceReloadListener<JsonEl
      */
     @Nullable
     private static Item item(String id) {
-        ResourceLocation location = ResourceLocation.tryParse(id);
+        Identifier location = Identifier.tryParse(id);
         if (location == null || !BuiltInRegistries.ITEM.containsKey(location)) return null;
         Item item = BuiltInRegistries.ITEM.getValue(location);
         return item == Items.AIR ? null : item;
@@ -113,7 +108,7 @@ public final class SampleAliases extends SimpleJsonResourceReloadListener<JsonEl
     /** The registered block for an id, or null, the same way as {@link #item}. */
     @Nullable
     private static Block block(String id) {
-        ResourceLocation location = ResourceLocation.tryParse(id);
+        Identifier location = Identifier.tryParse(id);
         if (location == null || !BuiltInRegistries.BLOCK.containsKey(location)) return null;
         Block block = BuiltInRegistries.BLOCK.getValue(location);
         return block == Blocks.AIR ? null : block;

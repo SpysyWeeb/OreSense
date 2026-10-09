@@ -4,7 +4,7 @@ import com.spysyweeb.oresense.OreSense;
 import com.spysyweeb.oresense.OreSensorItem;
 import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.codec.StreamCodec;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.tags.TagKey;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.world.item.Item;
@@ -21,7 +21,7 @@ import net.minecraft.world.InteractionHand;
 
 public class OreSensorMenu extends AbstractContainerMenu {
     // Our tag includes vanilla amethyst and optional common/modded equivalents.
-    private static final TagKey<Item> AMETHYST_TAG = TagKey.create(Registries.ITEM, ResourceLocation.fromNamespaceAndPath(OreSense.MODID, "amethyst"));
+    private static final TagKey<Item> AMETHYST_TAG = TagKey.create(Registries.ITEM, Identifier.fromNamespaceAndPath(OreSense.MODID, "amethyst"));
     /**
      * Menu slots: the sample, the charges, then inventory 9..35 and hotbar 0..8. On screen the
      * charges sit on the left and the sample on the right, each with a label (OreSensorScreen);
@@ -53,7 +53,7 @@ public class OreSensorMenu extends AbstractContainerMenu {
         this.player = inv.player;
         this.hand = hand;
         this.sensor = inv.player.getItemInHand(hand);
-        this.sensorSlot = hand == InteractionHand.MAIN_HAND ? HOTBAR_START + inv.selected : -1;
+        this.sensorSlot = hand == InteractionHand.MAIN_HAND ? HOTBAR_START + inv.getSelectedSlot() : -1;
         this.sample.setItem(0, OreSensorItem.getSample(sensor));
         int stored = OreSensorItem.getCharges(sensor);
         this.charges.setItem(0, stored > 0 ? new ItemStack(Items.AMETHYST_SHARD, stored) : ItemStack.EMPTY);
@@ -141,7 +141,7 @@ public class OreSensorMenu extends AbstractContainerMenu {
         saveCharges();
         super.removed(p);
         // hand the sample back if the player closes with something in the slot we could not store
-        if (!p.level().isClientSide && !sample.getItem(0).isEmpty() && OreSensorItem.getSample(sensor).isEmpty()) {
+        if (!p.level().isClientSide() && !sample.getItem(0).isEmpty() && OreSensorItem.getSample(sensor).isEmpty()) {
             p.drop(sample.getItem(0), false);
         }
     }

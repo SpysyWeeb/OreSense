@@ -4,16 +4,17 @@ import com.spysyweeb.oresense.Config;
 import com.spysyweeb.oresense.OreSense;
 import com.spysyweeb.oresense.OreSensorItem;
 import com.spysyweeb.oresense.scan.Signal;
-import net.fabricmc.fabric.api.client.model.loading.v1.ModelLoadingPlugin;
-import net.fabricmc.fabric.api.client.rendering.v1.BuiltinItemRendererRegistry;
-import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.world.item.ItemDisplayContext;
-import net.minecraft.resources.ResourceLocation;
+import java.util.ArrayList;
+import java.util.List;
+import net.minecraft.client.renderer.item.ItemModels;
 import net.minecraft.core.BlockPos;
+import net.minecraft.resources.Identifier;
 import net.minecraft.util.Mth;
+import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.Locale;
@@ -25,16 +26,16 @@ public class SensorClient {
     /** Needle frames: frame i points 11.25 degrees * i clockwise from straight up, like the vanilla compass. */
     public static final int NEEDLE_FRAMES = 32;
 
-    public static final ResourceLocation BASE = layer("ore_sensor_base");
+    public static final Identifier BASE = layer("ore_sensor_base");
     /** The lit lamps in the rim: 12 o'clock = the target is above, 6 o'clock = below. */
-    public static final ResourceLocation LAMP_UP = layer("ore_sensor_lamp_up");
-    public static final ResourceLocation LAMP_DOWN = layer("ore_sensor_lamp_down");
+    public static final Identifier LAMP_UP = layer("ore_sensor_lamp_up");
+    public static final Identifier LAMP_DOWN = layer("ore_sensor_lamp_down");
     /** NO_CHARGE: the four gauge cells in red. */
-    public static final ResourceLocation EMPTY = layer("ore_sensor_empty");
-    private static final ResourceLocation[] NEEDLE = numbered("ore_sensor_needle_", NEEDLE_FRAMES);
-    private static final ResourceLocation[] TAIL = numbered("ore_sensor_tail_", NEEDLE_FRAMES);
-    private static final ResourceLocation[] SONAR = numbered("ore_sensor_sonar_", SONAR_RINGS);
-    private static final ResourceLocation[] CHARGE = numbered("ore_sensor_charge_", CHARGE_CELLS);
+    public static final Identifier EMPTY = layer("ore_sensor_empty");
+    private static final Identifier[] NEEDLE = numbered("ore_sensor_needle_", NEEDLE_FRAMES);
+    private static final Identifier[] TAIL = numbered("ore_sensor_tail_", NEEDLE_FRAMES);
+    private static final Identifier[] SONAR = numbered("ore_sensor_sonar_", SONAR_RINGS);
+    private static final Identifier[] CHARGE = numbered("ore_sensor_charge_", CHARGE_CELLS);
 
     /**
      * DORMANT: no sample, nobody is scanning with it, or it is not in the local player's view
@@ -65,49 +66,49 @@ public class SensorClient {
     private static double rotation = 0.0, prevRotation = 0.0, delta = 0.0;
     private static long lastTick = 0;
 
-    public static ResourceLocation needle(int frame) {
+    public static Identifier needle(int frame) {
         return NEEDLE[frame];
     }
 
-    public static ResourceLocation tail(int frame) {
+    public static Identifier tail(int frame) {
         return TAIL[frame];
     }
 
-    public static ResourceLocation sonar(int ring) {
+    public static Identifier sonar(int ring) {
         return SONAR[ring];
     }
 
-    public static ResourceLocation charge(int cell) {
+    public static Identifier charge(int cell) {
         return CHARGE[cell];
     }
 
-    private static ResourceLocation layer(String name) {
-        return ResourceLocation.fromNamespaceAndPath(OreSense.MODID, "item/" + name);
+    private static Identifier layer(String name) {
+        // Additional models use their full model-file path in Minecraft 1.21.
+        return Identifier.fromNamespaceAndPath(OreSense.MODID, "item/" + name);
     }
 
-    private static ResourceLocation[] numbered(String prefix, int count) {
-        ResourceLocation[] models = new ResourceLocation[count];
+    private static Identifier[] numbered(String prefix, int count) {
+        Identifier[] models = new Identifier[count];
         for (int i = 0; i < count; i++) models[i] = layer(String.format(Locale.ROOT, "%s%02d", prefix, i));
         return models;
     }
 
-    public static void registerModels() {
-        ModelLoadingPlugin.register(context -> {
-            context.addModels(BASE);
-            context.addModels(LAMP_UP);
-            context.addModels(LAMP_DOWN);
-            context.addModels(EMPTY);
-            for (ResourceLocation frame : NEEDLE) context.addModels(frame);
-            for (ResourceLocation frame : TAIL) context.addModels(frame);
-            for (ResourceLocation ring : SONAR) context.addModels(ring);
-            for (ResourceLocation cell : CHARGE) context.addModels(cell);
-        });
+    public static List<Identifier> layers() {
+        List<Identifier> layers = new ArrayList<>(List.of(BASE, LAMP_UP, LAMP_DOWN, EMPTY));
+        layers.addAll(List.of(NEEDLE));
+        layers.addAll(List.of(TAIL));
+        layers.addAll(List.of(SONAR));
+        layers.addAll(List.of(CHARGE));
+        return layers;
+    }
+
+    /** Register before the initial item-model JSON resources are parsed. */
+    public static void registerItemModelType() {
+        ItemModels.ID_MAPPER.put(Identifier.fromNamespaceAndPath(OreSense.MODID, "sensor"), SensorItemModel.Unbaked.CODEC);
     }
 
     public static void onClientSetup() {
         MenuScreens.register(OreSense.ORE_SENSOR_MENU, OreSensorScreen::new);
-        BuiltinItemRendererRegistry.DynamicItemRenderer renderer = SensorRenderer.get()::renderByItem;
-        BuiltinItemRendererRegistry.INSTANCE.register(OreSense.ORE_SENSOR, renderer);
     }
 
     /** Works out what this stack's dial shows right now, easing the needle toward the live reading. */
@@ -128,7 +129,7 @@ public class SensorClient {
             state = State.DORMANT;
         } else if (target != null
                 && !OreSensorItem.isNoCharge(stack)   // the server never writes both; keep NO_CHARGE authoritative if it ever did
-                && world.dimension().location().toString().equals(OreSensorItem.getTargetDimension(stack))) {
+                && world.dimension().identifier().toString().equals(OreSensorItem.getTargetDimension(stack))) {
             state = State.LOCKED;
         } else if (OreSensorItem.isNoCharge(stack)) {
             state = State.NO_CHARGE;

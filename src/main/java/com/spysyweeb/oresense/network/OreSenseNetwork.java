@@ -8,13 +8,13 @@ import net.fabricmc.fabric.api.networking.v1.ServerLoginNetworking;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.network.chat.Component;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 
 /** Required login handshake, then the server's accepted-sample list during play. */
 public final class OreSenseNetwork {
     static final int PROTOCOL = 1;
-    static final ResourceLocation HANDSHAKE = ResourceLocation.fromNamespaceAndPath(OreSense.MODID, "handshake");
+    static final Identifier HANDSHAKE = Identifier.fromNamespaceAndPath(OreSense.MODID, "handshake");
 
     private OreSenseNetwork() {}
 
@@ -26,7 +26,7 @@ public final class OreSenseNetwork {
                 (server, handler, understood, buf, synchronizer, sender) -> {
                     if (!understood || !matchesProtocol(buf)) {
                         handler.disconnect(Component.literal(
-                                "This server requires a compatible OreSense installation for Minecraft 1.20.6 (Fabric)."));
+                                "This server requires OreSense (Fabric) and Fabric API."));
                     }
                 });
     }
