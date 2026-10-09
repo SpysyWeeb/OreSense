@@ -2,7 +2,9 @@
 
 ## 1.0.2 — 2026-10-09
 
-- Added Minecraft 1.21.8 support for Forge 58.1.0 with Java 21.
+- Ported loader registration, networking, item models, and common ore and ingredient tags to NeoForge.
+
+- Added Minecraft 1.21.8 support for NeoForge 21.8.54 with Java 21.
 - Updated rendering and data-pack paths for Minecraft 1.21.8 while preserving the animated dial and saved sensors.
 
 - Renamed the sensor menu's Ore slot to Sample to reflect that it also accepts ore drops and items made
