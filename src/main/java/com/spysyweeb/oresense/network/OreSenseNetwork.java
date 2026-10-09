@@ -25,7 +25,7 @@ public final class OreSenseNetwork {
                 (server, handler, understood, buf, synchronizer, sender) -> {
                     if (!understood || !matchesProtocol(buf)) {
                         handler.disconnect(new TextComponent(
-                                "This server requires a compatible OreSense installation for Minecraft 1.17 (Fabric)."));
+                                "This server requires a compatible OreSense installation for Minecraft 1.17.1 (Fabric)."));
                     }
                 });
     }
