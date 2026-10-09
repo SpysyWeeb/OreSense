@@ -1,9 +1,11 @@
 package com.spysyweeb.oresense.scan;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Registry;
+import net.minecraft.core.RegistryAccess;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.TagKey;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.storage.loot.LootTables;
 import com.spysyweeb.oresense.OreSense;
 import net.minecraft.server.level.ServerLevel;
@@ -35,7 +37,7 @@ import java.util.*;
  */
 public final class SampleResolver {
     private static Map<Item, Set<Block>> itemToOres = null;
-    private static final ResourceLocation ORE_TAG = new ResourceLocation(OreSense.MODID, "ores");
+    private static final TagKey<Block> ORE_TAG = TagKey.create(Registries.BLOCK, new ResourceLocation(OreSense.MODID, "ores"));
     /**
      * /reload replaces both managers when the newly loaded resources become live. Checking
      * their identities keeps a sample click during an in-flight reload from caching old
@@ -66,7 +68,7 @@ public final class SampleResolver {
         // what it drops; any other block stands for itself only when the oresOnly config is off
         if (sample.getItem() instanceof BlockItem blockItem) {
             Block block = blockItem.getBlock();
-            if (block.defaultBlockState().is(BlockTags.getAllTags().getTagOrEmpty(ORE_TAG))) {
+            if (block.defaultBlockState().is(ORE_TAG)) {
                 return byProduct(level).getOrDefault(sample.getItem(), Set.of(block));
             }
             if (!com.spysyweeb.oresense.Config.INSTANCE.oresOnly.get()) {
@@ -90,9 +92,9 @@ public final class SampleResolver {
         byProduct(level).forEach((item, ores) -> {
             if (!ores.isEmpty() && item != Items.AIR) items.add(item);   // air: an ore with no item
         });
-        for (Item item : Registry.ITEM) {
+        for (Item item : BuiltInRegistries.ITEM) {
             if (item instanceof BlockItem blockItem
-                    && blockItem.getBlock().defaultBlockState().is(BlockTags.getAllTags().getTagOrEmpty(ORE_TAG))) items.add(item);
+                    && blockItem.getBlock().defaultBlockState().is(ORE_TAG)) items.add(item);
         }
         items.addAll(SampleAliases.items());
         return items;
@@ -110,9 +112,9 @@ public final class SampleResolver {
                 .withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(BlockPos.ZERO))
                 .withParameter(LootContextParams.TOOL, new ItemStack(Items.NETHERITE_PICKAXE));
 
-        for (Block block : Registry.BLOCK) {
+        for (Block block : BuiltInRegistries.BLOCK) {
             BlockState state = block.defaultBlockState();
-            if (!state.is(BlockTags.getAllTags().getTagOrEmpty(ORE_TAG))) continue;
+            if (!state.is(ORE_TAG)) continue;
             map.computeIfAbsent(block.asItem(), k -> new HashSet<>()).add(block);
             List<ItemStack> drops;
             try {
@@ -131,9 +133,10 @@ public final class SampleResolver {
 
         // material links from the server's recipes: item -> the items made purely of it
         Map<Item, Set<Item>> links = new HashMap<>();
-        linkCooking(recipes.getAllRecipesFor(RecipeType.SMELTING), links);
-        linkCooking(recipes.getAllRecipesFor(RecipeType.BLASTING), links);
-        linkCrafting(recipes.getAllRecipesFor(RecipeType.CRAFTING), links);
+        RegistryAccess access = level.registryAccess();
+        linkCooking(recipes.getAllRecipesFor(RecipeType.SMELTING), access, links);
+        linkCooking(recipes.getAllRecipesFor(RecipeType.BLASTING), access, links);
+        linkCrafting(recipes.getAllRecipesFor(RecipeType.CRAFTING), access, links);
 
         // carry the ores along the links until nothing changes; a pass that changes something
         // adds at least one (item, ore) pair and there are finitely many, so this ends
@@ -173,10 +176,10 @@ public final class SampleResolver {
      * Smelting and blasting: the ingredient becomes the result. One way only, so smelting an
      * iron pickaxe into nuggets never makes the pickaxe a sample.
      */
-    private static void linkCooking(List<? extends Recipe<?>> recipes, Map<Item, Set<Item>> links) {
+    private static void linkCooking(List<? extends Recipe<?>> recipes, RegistryAccess access, Map<Item, Set<Item>> links) {
         for (Recipe<?> recipe : recipes) {
             try {
-                ItemStack result = recipe.getResultItem();
+                ItemStack result = recipe.getResultItem(access);
                 List<Ingredient> ingredients = recipe.getIngredients();
                 if (result.isEmpty() || ingredients.isEmpty()) continue;
                 for (Item from : accepted(ingredients.get(0))) link(links, from, result.getItem());
@@ -194,11 +197,11 @@ public final class SampleResolver {
      * with two sources from joining them; blue dye comes from lapis and from cornflowers, so a
      * cornflower must not find lapis ore. Recipes that mix materials link nothing.
      */
-    private static void linkCrafting(List<? extends Recipe<?>> recipes, Map<Item, Set<Item>> links) {
+    private static void linkCrafting(List<? extends Recipe<?>> recipes, RegistryAccess access, Map<Item, Set<Item>> links) {
         for (Recipe<?> recipe : recipes) {
             try {
                 if (recipe.isSpecial()) continue;
-                ItemStack result = recipe.getResultItem();
+                ItemStack result = recipe.getResultItem(access);
                 if (result.isEmpty()) continue;
                 Set<Item> material = null;
                 boolean pure = true;

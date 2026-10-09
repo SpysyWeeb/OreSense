@@ -6,7 +6,7 @@ import net.fabricmc.fabric.api.networking.v1.ServerLoginConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerLoginNetworking;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.chat.TextComponent;
+import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 
@@ -24,8 +24,8 @@ public final class OreSenseNetwork {
         ServerLoginNetworking.registerGlobalReceiver(HANDSHAKE,
                 (server, handler, understood, buf, synchronizer, sender) -> {
                     if (!understood || !matchesProtocol(buf)) {
-                        handler.disconnect(new TextComponent(
-                                "This server requires a compatible OreSense installation for Minecraft 1.17 (Fabric)."));
+                        handler.disconnect(Component.literal(
+                                "This server requires a compatible OreSense installation for Minecraft 1.19.4 (Fabric)."));
                     }
                 });
     }
