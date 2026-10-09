@@ -1,111 +1,112 @@
 {
- "parent": "builtin/entity",
- "gui_light": "front",
- "textures": {
-  "particle": "oresense:item/ore_sensor_base"
- },
- "display": {
-  "ground": {
-   "rotation": [
-    0,
-    0,
-    0
-   ],
-   "translation": [
-    0,
-    2,
-    0
-   ],
-   "scale": [
-    0.5,
-    0.5,
-    0.5
-   ]
+  "parent": "minecraft:item/generated",
+  "gui_light": "front",
+  "textures": {
+    "particle": "oresense:item/ore_sensor_base",
+    "layer0": "oresense:item/ore_sensor_base"
   },
-  "head": {
-   "rotation": [
-    0,
-    180,
-    0
-   ],
-   "translation": [
-    0,
-    13,
-    7
-   ],
-   "scale": [
-    1,
-    1,
-    1
-   ]
-  },
-  "thirdperson_righthand": {
-   "rotation": [
-    0,
-    0,
-    0
-   ],
-   "translation": [
-    0,
-    3,
-    1
-   ],
-   "scale": [
-    0.55,
-    0.55,
-    0.55
-   ]
-  },
-  "firstperson_righthand": {
-   "rotation": [
-    0,
-    -90,
-    25
-   ],
-   "translation": [
-    0.3,
-    5.5,
-    1.13
-   ],
-   "scale": [
-    0.55,
-    0.55,
-    0.55
-   ]
-  },
-  "gui": {
-   "rotation": [
-    0,
-    0,
-    0
-   ],
-   "translation": [
-    0,
-    0,
-    0
-   ],
-   "scale": [
-    1,
-    1,
-    1
-   ]
-  },
-  "fixed": {
-   "rotation": [
-    0,
-    180,
-    0
-   ],
-   "translation": [
-    0,
-    0,
-    0
-   ],
-   "scale": [
-    1,
-    1,
-    1
-   ]
+  "display": {
+    "ground": {
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0,
+        2,
+        0
+      ],
+      "scale": [
+        0.5,
+        0.5,
+        0.5
+      ]
+    },
+    "head": {
+      "rotation": [
+        0,
+        180,
+        0
+      ],
+      "translation": [
+        0,
+        13,
+        7
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    "thirdperson_righthand": {
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0,
+        3,
+        1
+      ],
+      "scale": [
+        0.55,
+        0.55,
+        0.55
+      ]
+    },
+    "firstperson_righthand": {
+      "rotation": [
+        0,
+        -90,
+        25
+      ],
+      "translation": [
+        0.3,
+        5.5,
+        1.13
+      ],
+      "scale": [
+        0.55,
+        0.55,
+        0.55
+      ]
+    },
+    "gui": {
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    },
+    "fixed": {
+      "rotation": [
+        0,
+        180,
+        0
+      ],
+      "translation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ]
+    }
   }
- }
 }
