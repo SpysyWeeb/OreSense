@@ -2,7 +2,7 @@
 
 ## 1.0.2 — 2026-10-09
 
-- Added Minecraft 26.1.2 support for Forge 64.1.3 with Java 25.
+- Added Minecraft 26.1.2 support for NeoForge 26.1.2.115 with Java 25.
 - Updated rendering and data-pack paths for Minecraft 26.1.2 while preserving the animated dial and saved sensors.
 
 - Renamed the sensor menu's Ore slot to Sample to reflect that it also accepts ore drops and items made
