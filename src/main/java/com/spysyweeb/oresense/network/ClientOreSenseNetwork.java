@@ -8,7 +8,7 @@ import net.fabricmc.fabric.api.client.networking.v1.ClientLoginNetworking;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayConnectionEvents;
 import net.fabricmc.fabric.api.client.networking.v1.ClientPlayNetworking;
 import net.minecraft.network.Connection;
-import net.minecraft.network.chat.TextComponent;
+import net.minecraft.network.chat.Component;
 
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
@@ -30,7 +30,7 @@ public final class ClientOreSenseNetwork {
         ClientLoginNetworking.registerGlobalReceiver(OreSenseNetwork.HANDSHAKE,
                 (client, handler, buf, listenerAdder) -> {
                     if (!OreSenseNetwork.matchesProtocol(buf)) {
-                        handler.getConnection().disconnect(new TextComponent(
+                        handler.getConnection().disconnect(Component.literal(
                                 "The server uses an incompatible OreSense network version."));
                         return CompletableFuture.completedFuture(null);
                     }
@@ -41,7 +41,7 @@ public final class ClientOreSenseNetwork {
                 verified.remove(handler.getConnection()));
         ClientPlayConnectionEvents.INIT.register((handler, client) -> {
             if (!verified.remove(handler.getConnection())) {
-                handler.getConnection().disconnect(new TextComponent(
+                handler.getConnection().disconnect(Component.literal(
                         "OreSense must also be installed on the server to join with this mod."));
             }
         });

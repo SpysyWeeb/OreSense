@@ -1,9 +1,10 @@
 package com.spysyweeb.oresense.scan;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.BlockTags;
+import net.minecraft.tags.TagKey;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.world.level.storage.loot.LootTables;
 import com.spysyweeb.oresense.OreSense;
 import net.minecraft.server.level.ServerLevel;
@@ -35,7 +36,7 @@ import java.util.*;
  */
 public final class SampleResolver {
     private static Map<Item, Set<Block>> itemToOres = null;
-    private static final ResourceLocation ORE_TAG = new ResourceLocation(OreSense.MODID, "ores");
+    private static final TagKey<Block> ORE_TAG = TagKey.create(Registries.BLOCK, new ResourceLocation(OreSense.MODID, "ores"));
     /**
      * /reload replaces both managers when the newly loaded resources become live. Checking
      * their identities keeps a sample click during an in-flight reload from caching old
@@ -66,7 +67,7 @@ public final class SampleResolver {
         // what it drops; any other block stands for itself only when the oresOnly config is off
         if (sample.getItem() instanceof BlockItem blockItem) {
             Block block = blockItem.getBlock();
-            if (block.defaultBlockState().is(BlockTags.getAllTags().getTagOrEmpty(ORE_TAG))) {
+            if (block.defaultBlockState().is(ORE_TAG)) {
                 return byProduct(level).getOrDefault(sample.getItem(), Set.of(block));
             }
             if (!com.spysyweeb.oresense.Config.INSTANCE.oresOnly.get()) {
@@ -90,9 +91,9 @@ public final class SampleResolver {
         byProduct(level).forEach((item, ores) -> {
             if (!ores.isEmpty() && item != Items.AIR) items.add(item);   // air: an ore with no item
         });
-        for (Item item : Registry.ITEM) {
+        for (Item item : BuiltInRegistries.ITEM) {
             if (item instanceof BlockItem blockItem
-                    && blockItem.getBlock().defaultBlockState().is(BlockTags.getAllTags().getTagOrEmpty(ORE_TAG))) items.add(item);
+                    && blockItem.getBlock().defaultBlockState().is(ORE_TAG)) items.add(item);
         }
         items.addAll(SampleAliases.items());
         return items;
@@ -110,9 +111,9 @@ public final class SampleResolver {
                 .withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(BlockPos.ZERO))
                 .withParameter(LootContextParams.TOOL, new ItemStack(Items.NETHERITE_PICKAXE));
 
-        for (Block block : Registry.BLOCK) {
+        for (Block block : BuiltInRegistries.BLOCK) {
             BlockState state = block.defaultBlockState();
-            if (!state.is(BlockTags.getAllTags().getTagOrEmpty(ORE_TAG))) continue;
+            if (!state.is(ORE_TAG)) continue;
             map.computeIfAbsent(block.asItem(), k -> new HashSet<>()).add(block);
             List<ItemStack> drops;
             try {
