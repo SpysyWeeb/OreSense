@@ -36,7 +36,7 @@ public record KnownSamplesPacket(Set<Item> items, boolean anyBlock) implements C
      */
     public static KnownSamplesPacket decode(FriendlyByteBuf buf) {
         boolean anyBlock = buf.readBoolean();
-        Set<Item> items = buf.readCollection(HashSet::new, b -> BuiltInRegistries.ITEM.get(b.readResourceLocation()));
+        Set<Item> items = buf.readCollection(HashSet::new, b -> BuiltInRegistries.ITEM.getValue(b.readResourceLocation()));
         items.remove(null);
         items.remove(Items.AIR);
         return new KnownSamplesPacket(items, anyBlock);

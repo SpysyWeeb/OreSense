@@ -1,7 +1,5 @@
 package com.spysyweeb.oresense.scan;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import org.apache.logging.log4j.LogManager;
@@ -37,16 +35,17 @@ import java.util.Set;
  * up; a data pack that overrides a file with an empty block list removes that alias. Unknown
  * ids are logged and skipped. /reload reads the folder again.
  */
-public final class SampleAliases extends SimpleJsonResourceReloadListener implements IdentifiableResourceReloadListener {
+public final class SampleAliases extends SimpleJsonResourceReloadListener<JsonElement> implements IdentifiableResourceReloadListener {
     public static final String DIRECTORY = "sample_aliases";
     private static final Logger LOGGER = LogManager.getLogger();
-    private static final Gson GSON = new GsonBuilder().create();
 
     /** Replaced whole by each reload, so a reader always sees one complete load. */
     private static volatile Map<Item, Set<Block>> aliases = Map.of();
 
     public SampleAliases() {
-        super(GSON, DIRECTORY);
+        super(com.mojang.serialization.Codec.PASSTHROUGH.xmap(
+                dynamic -> dynamic.convert(com.mojang.serialization.JsonOps.INSTANCE).getValue(),
+                json -> new com.mojang.serialization.Dynamic<>(com.mojang.serialization.JsonOps.INSTANCE, json)), DIRECTORY);
     }
 
     @Override
@@ -107,7 +106,7 @@ public final class SampleAliases extends SimpleJsonResourceReloadListener implem
     private static Item item(String id) {
         ResourceLocation location = ResourceLocation.tryParse(id);
         if (location == null || !BuiltInRegistries.ITEM.containsKey(location)) return null;
-        Item item = BuiltInRegistries.ITEM.get(location);
+        Item item = BuiltInRegistries.ITEM.getValue(location);
         return item == Items.AIR ? null : item;
     }
 
@@ -116,7 +115,7 @@ public final class SampleAliases extends SimpleJsonResourceReloadListener implem
     private static Block block(String id) {
         ResourceLocation location = ResourceLocation.tryParse(id);
         if (location == null || !BuiltInRegistries.BLOCK.containsKey(location)) return null;
-        Block block = BuiltInRegistries.BLOCK.get(location);
+        Block block = BuiltInRegistries.BLOCK.getValue(location);
         return block == Blocks.AIR ? null : block;
     }
 }

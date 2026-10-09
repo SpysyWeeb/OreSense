@@ -36,8 +36,8 @@ public final class OreScanner {
         LongArrayList hits = ignoring ? new LongArrayList() : null;
         DoubleArrayList hitsSq = ignoring ? new DoubleArrayList() : null;
 
-        int minY = Math.max(level.getMinBuildHeight(), center.getY() - vRange);
-        int maxY = Math.min(level.getMaxBuildHeight() - 1, center.getY() + vRange);
+        int minY = Math.max(level.getMinY(), center.getY() - vRange);
+        int maxY = Math.min(level.getMaxY(), center.getY() + vRange);
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
 
         for (int x = center.getX() - hRange; x <= center.getX() + hRange; x++) {

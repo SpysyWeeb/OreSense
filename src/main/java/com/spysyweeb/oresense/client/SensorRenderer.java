@@ -110,8 +110,7 @@ public class SensorRenderer {
         // bit for bit alike: the same depth at every pixel (LEQUAL passes) and the same sort key
         // (BufferBuilder sorts translucent quads by the midpoint of vertices 0 and 2, stable for
         // ties), so each layer lands on top of the one before it.
-        VertexConsumer vc = ItemRenderer.getFoilBufferDirect(buffer,
-                ItemBlockRenderTypes.getRenderType(stack, true), true, false);
+        VertexConsumer vc = buffer.getBuffer(ItemBlockRenderTypes.getRenderType(stack));
 
         drawLayer(pose, vc, models.getModel(SensorClient.BASE), 1f, 1f, 1f, 1f, light, overlay);
 
@@ -250,7 +249,7 @@ public class SensorRenderer {
 
         // a block's own sheet (cutout, or translucent-cull for translucent blocks), on the block
         // atlas, which is where the quads' baked UVs point
-        VertexConsumer vc = buffer.getBuffer(ItemBlockRenderTypes.getRenderType(sample, true));
+        VertexConsumer vc = buffer.getBuffer(ItemBlockRenderTypes.getRenderType(sample));
         PoseStack.Pose dial = ps.last();
         Vector3f n = new Vector3f();
         Vector4f p = new Vector4f();

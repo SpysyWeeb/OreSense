@@ -151,7 +151,7 @@ public class SensorClient {
 
             double dx = (target.getX() + 0.5) - player.getX();
             double dz = (target.getZ() + 0.5) - player.getZ();
-            double facing = Math.toRadians(player.getViewYRot(mc.getTimer().getGameTimeDeltaPartialTick(true)) + 90.0);
+            double facing = Math.toRadians(player.getViewYRot(mc.getDeltaTracker().getGameTimeDeltaPartialTick(true)) + 90.0);
             want = wrap((Math.atan2(dz, dx) - facing) / (Math.PI * 2.0));
 
             int sign = Signal.verticalSign(target.getY() - player.blockPosition().getY());
@@ -174,7 +174,7 @@ public class SensorClient {
         if (state != State.DORMANT) {
             // the shortest way from the last step's start to its end (the step is |delta| < 0.5)
             double step = wrap(rotation - prevRotation + 0.5) - 0.5;
-            angle = (float) wrap(prevRotation + mc.getTimer().getGameTimeDeltaPartialTick(true) * step);
+            angle = (float) wrap(prevRotation + mc.getDeltaTracker().getGameTimeDeltaPartialTick(true) * step);
         }
         return new Reading(state, angle, vertical, sample, lost, paid, closeness, charges);
     }
