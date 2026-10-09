@@ -15,7 +15,7 @@
     },
     "has_the_recipe": {
       "conditions": {
-        "recipe": "oresense:ore_sensor"
+        "recipes": "oresense:ore_sensor"
       },
       "trigger": "minecraft:recipe_unlocked"
     }

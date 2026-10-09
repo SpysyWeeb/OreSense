@@ -26,7 +26,8 @@ public record KnownSamplesPacket(Set<Item> items, boolean anyBlock) implements C
 
     public static void encode(KnownSamplesPacket packet, FriendlyByteBuf buf) {
         buf.writeBoolean(packet.anyBlock);
-        buf.writeCollection(packet.items, (b, item) -> b.writeIdentifier(BuiltInRegistries.ITEM.getKey(item)));
+        buf.writeVarInt(packet.items.size());
+        for (Item item : packet.items) buf.writeIdentifier(BuiltInRegistries.ITEM.getKey(item));
     }
 
     /**
@@ -36,7 +37,10 @@ public record KnownSamplesPacket(Set<Item> items, boolean anyBlock) implements C
      */
     public static KnownSamplesPacket decode(FriendlyByteBuf buf) {
         boolean anyBlock = buf.readBoolean();
-        Set<Item> items = buf.readCollection(HashSet::new, b -> BuiltInRegistries.ITEM.getValue(b.readIdentifier()));
+        int count = buf.readVarInt();
+        if (count < 0 || count > buf.readableBytes()) throw new io.netty.handler.codec.DecoderException("Invalid sample count: " + count);
+        Set<Item> items = new HashSet<>();
+        for (int i = 0; i < count; i++) items.add(BuiltInRegistries.ITEM.getValue(buf.readIdentifier()));
         items.remove(null);
         items.remove(Items.AIR);
         return new KnownSamplesPacket(items, anyBlock);
