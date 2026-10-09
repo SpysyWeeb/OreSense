@@ -49,8 +49,8 @@ public final class OreScanner {
                     BlockState state = level.getBlockState(cursor);
                     if (!targets.contains(state.getBlock())) continue;
                     count++;
-                    double dSq = cursor.distSqr(
-                            center.getX() + 0.5, center.getY() + 0.5, center.getZ() + 0.5, true);
+                    double dSq = cursor.distToCenterSqr(
+                            center.getX() + 0.5, center.getY() + 0.5, center.getZ() + 0.5);
                     if (ignoring) {
                         hits.add(cursor.asLong());
                         hitsSq.add(dSq);

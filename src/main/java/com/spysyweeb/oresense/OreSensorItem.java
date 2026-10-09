@@ -41,7 +41,7 @@ import java.util.List;
 import java.util.Set;
 
 public class OreSensorItem extends Item {
-    // 1.17 has no amethyst resonance asset. Use its chime and compensate for the
+    // 1.18.2 has no amethyst resonance asset. Use its chime and compensate for the
     // 0.2 volume in vanilla's sounds.json so lock/release keep their intended loudness.
     private static final float AMETHYST_CHIME_VOLUME_SCALE = 5.0f;
 
@@ -519,7 +519,7 @@ public class OreSensorItem extends Item {
         BlockPos best = blocks.get(0);
         double bestSq = Double.MAX_VALUE;
         for (BlockPos pos : blocks) {
-            double dSq = pos.distSqr(center.getX() + 0.5, center.getY() + 0.5, center.getZ() + 0.5, true);
+            double dSq = pos.distToCenterSqr(center.getX() + 0.5, center.getY() + 0.5, center.getZ() + 0.5);
             if (dSq < bestSq) {
                 bestSq = dSq;
                 best = pos;
@@ -529,7 +529,7 @@ public class OreSensorItem extends Item {
     }
 
     private static double distance(BlockPos center, BlockPos pos) {
-        return Math.sqrt(pos.distSqr(center.getX() + 0.5, center.getY() + 0.5, center.getZ() + 0.5, true));
+        return Math.sqrt(pos.distToCenterSqr(center.getX() + 0.5, center.getY() + 0.5, center.getZ() + 0.5));
     }
 
     /** Inside the box a scan covers around the player's feet block. */
