@@ -2,7 +2,7 @@
 
 ## 1.0.2 — 2026-10-09
 
-- Added Minecraft 1.21.5 support with Fabric Loader and Fabric API.
+- Added Minecraft 1.21.8 support with Fabric Loader and Fabric API.
 - Preserved stored samples and charge when upgrading worlds to the new item component format.
 - Added support for modern Fabric common material tags.
 
