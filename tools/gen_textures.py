@@ -527,7 +527,7 @@ SLOT_LIGHT = rgb("#ffffff")      # bottom and right edge
 # Item positions of OreSensorMenu's slots (its addSlot calls). A slot's frame
 # starts 1 px up and left of its item. The charges (amethyst shards) sit on the
 # left and the sample on the right, each with room on its left for the label
-# OreSensorScreen draws ("Shards" ends at x 47, "Ore" at x 135).
+# OreSensorScreen draws ("Shards" ends at x 47, "Sample" at x 135).
 SAMPLE_SLOT = (140, 20)
 CHARGE_SLOT = (52, 20)
 INVENTORY_SLOTS = (8, 51)        # first of 9 columns x 3 rows
