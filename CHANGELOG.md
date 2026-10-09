@@ -2,6 +2,9 @@
 
 ## 1.0.2 — 2026-10-09
 
+- Added Minecraft 1.20.5 support with Quilt Loader 0.30.1 and Fabric API.
+- Matched the loader dependency to Quilt's Fabric compatibility version; gameplay and artwork are unchanged.
+
 - Added Minecraft 1.20.5 support with Fabric Loader and Fabric API.
 - Preserved stored samples and charge when upgrading worlds to the new item component format.
 - Added support for modern Fabric common material tags.
