@@ -15,7 +15,7 @@ public record KnownSamplesPacket(Set<Item> items, boolean anyBlock) {
 
     public static void encode(KnownSamplesPacket packet, FriendlyByteBuf buf) {
         buf.writeBoolean(packet.anyBlock);
-        buf.writeCollection(packet.items, (b, item) -> b.writeResourceLocation(ForgeRegistries.ITEMS.getKey(item)));
+        buf.writeCollection(packet.items, (b, item) -> b.writeIdentifier(ForgeRegistries.ITEMS.getKey(item)));
     }
 
     /**
@@ -25,7 +25,7 @@ public record KnownSamplesPacket(Set<Item> items, boolean anyBlock) {
      */
     public static KnownSamplesPacket decode(FriendlyByteBuf buf) {
         boolean anyBlock = buf.readBoolean();
-        Set<Item> items = buf.readCollection(HashSet::new, b -> ForgeRegistries.ITEMS.getValue(b.readResourceLocation()));
+        Set<Item> items = buf.readCollection(HashSet::new, b -> ForgeRegistries.ITEMS.getValue(b.readIdentifier()));
         items.remove(null);
         items.remove(Items.AIR);
         return new KnownSamplesPacket(items, anyBlock);

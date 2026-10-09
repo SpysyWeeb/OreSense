@@ -1,7 +1,7 @@
 package com.spysyweeb.oresense.network;
 
 import com.spysyweeb.oresense.OreSense;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraftforge.network.NetworkDirection;
 import net.minecraftforge.network.ChannelBuilder;
@@ -18,7 +18,7 @@ public final class OreSenseNetwork {
      * lacks a mod the client brings), and a server with the mod refuses a client without it.
      */
     public static final SimpleChannel CHANNEL = ChannelBuilder
-            .named(ResourceLocation.fromNamespaceAndPath(OreSense.MODID, "main"))
+            .named(Identifier.fromNamespaceAndPath(OreSense.MODID, "main"))
             .networkProtocolVersion(PROTOCOL)
             .simpleChannel();
 

@@ -3,35 +3,34 @@ package com.spysyweeb.oresense.client;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.spysyweeb.oresense.OreSensorItem;
 import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.minecraft.Util;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
-import net.minecraft.client.renderer.ItemBlockRenderTypes;
+import net.minecraft.util.Util;
+import net.minecraft.client.renderer.special.SpecialModelRenderer;
+import net.minecraft.client.renderer.item.ItemStackRenderState;
+import net.minecraft.client.renderer.rendertype.RenderTypes;
+import net.minecraft.client.renderer.texture.TextureAtlas;
+import net.minecraft.resources.Identifier;
+import java.util.Map;
 import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.SubmitNodeCollector;
 import net.minecraft.client.renderer.block.model.BakedQuad;
-import net.minecraft.client.renderer.entity.ItemRenderer;
-import net.minecraft.client.resources.model.BakedModel;
+
 import net.minecraft.client.resources.model.ModelManager;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
-import net.minecraftforge.client.model.IQuadTransformer;
+import net.minecraft.client.model.geom.builders.UVPair;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 
-import java.util.ArrayList;
 import java.util.List;
 
 /**
  * Draws the 16x16 dial as stacked layers (base, sonar ring, charge gauge, needle tail and tip, lit
  * lamp), then the sample sitting in the window at the centre so you can see what it is hunting for.
  */
-public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
+public class SensorRenderer implements SpecialModelRenderer<SensorItemModel.Snapshot> {
     // locked needle glow: one pulse per PULSE_NEAR_MS on the target, PULSE_NEAR_MS + PULSE_FAR_MS
     // at the edge of the scan range, linear in between
     private static final double PULSE_NEAR_MS = 350.0;
@@ -75,46 +74,77 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
     // centre when the dial is seen at an angle in hand.
     private static final float DECAL_Z = 0.542f;
 
-    public static SensorRenderer instance;
+    private final Map<Identifier, List<BakedQuad>> models;
 
-    public SensorRenderer() {
-        super(Minecraft.getInstance().getBlockEntityRenderDispatcher(),
-              Minecraft.getInstance().getEntityModels());
-    }
-
-    public static SensorRenderer get() {
-        if (instance == null) instance = new SensorRenderer();
-        return instance;
+    public SensorRenderer(Map<Identifier, List<BakedQuad>> models) {
+        this.models = Map.copyOf(models);
     }
 
     @Override
-    public void renderByItem(ItemStack stack, ItemDisplayContext context, PoseStack pose,
-                             MultiBufferSource buffer, int light, int overlay) {
-        Minecraft mc = Minecraft.getInstance();
-        ModelManager models = mc.getModelManager();
-        SensorClient.Reading reading = SensorClient.read(stack, context);
-        long now = Util.getMillis();              // one clock for every sensor on screen
+    public SensorItemModel.Snapshot extractArgument(ItemStack stack) {
+        throw new IllegalStateException("Sensor readings require the original item render context");
+    }
 
-        // ItemRenderer has already applied the display transform and the -0.5 model shift, so
-        // this is model space: x,y in [0,1], every layer's front face at z 0.53. All layers go
-        // into one buffer in draw order. Every layer is an unturned item/generated model, so its
-        // front quad shares its corners with the base's and comes out of the vertex transform
-        // bit for bit alike: the same depth at every pixel (LEQUAL passes) and the same sort key
-        // (BufferBuilder sorts translucent quads by the midpoint of vertices 0 and 2, stable for
-        // ties), so each layer lands on top of the one before it.
-        VertexConsumer vc = ItemRenderer.getFoilBufferDirect(buffer,
-                ItemBlockRenderTypes.getRenderType(stack, true), true, false);
+    @Override
+    public void getExtents(java.util.function.Consumer<org.joml.Vector3fc> extents) {
+        for (float x : new float[]{0f, 1f})
+            for (float y : new float[]{0f, 1f})
+                for (float z : new float[]{0.46875f, 0.56f})
+                    extents.accept(new Vector3f(x, y, z));
+    }
 
-        drawLayer(pose, vc, models.getModel(SensorClient.BASE), 1f, 1f, 1f, 1f, light, overlay);
+    @Override
+    public void submit(SensorItemModel.Snapshot snapshot, ItemDisplayContext context, PoseStack pose,
+                       SubmitNodeCollector collector, int light, int overlay, boolean foil, int outlineColor) {
+        SensorClient.Reading reading = snapshot.reading();
+        long now = Util.getMillis();
+        double lockedPhase = reading.state() == SensorClient.State.LOCKED && !reading.lost()
+                ? advancePulse(now, PULSE_NEAR_MS + PULSE_FAR_MS * (1.0 - reading.closeness())) : 0;
+        collector.order(0).submitCustomGeometry(pose, RenderTypes.entityTranslucent(TextureAtlas.LOCATION_ITEMS),
+                (savedPose, vc) -> {
+                    PoseStack drawPose = poseStack(savedPose);
+                    drawDial(drawPose, vc, reading, now, lockedPhase, light, overlay);
+                });
+
+        ItemStackRenderState sample = snapshot.sample();
+        if (sample.isEmpty()) return;
+        boolean flat = true;
+        for (int i = 0; i < sample.activeLayerCount; i++) {
+            if (sample.layers[i].specialRenderer != null || sample.layers[i].quads.isEmpty()) flat = false;
+        }
+        pose.pushPose();
+        pose.translate(0.5f, 0.5f, flat ? DECAL_Z : 0.56f);
+        pose.scale(SAMPLE_SCALE, SAMPLE_SCALE, SAMPLE_SCALE);
+        if (flat) {
+            for (int i = 0; i < sample.activeLayerCount; i++) {
+                ItemStackRenderState.LayerRenderState layer = sample.layers[i];
+                collector.order(1).submitCustomGeometry(pose, layer.renderType,
+                        (savedPose, vc) -> drawFlatIcon(poseStack(savedPose), vc, layer, light, overlay));
+            }
+        } else {
+            sample.submit(pose, collector, light, overlay, outlineColor);
+        }
+        pose.popPose();
+    }
+
+    private static PoseStack poseStack(PoseStack.Pose savedPose) {
+        PoseStack pose = new PoseStack();
+        pose.last().set(savedPose);
+        return pose;
+    }
+
+    private void drawDial(PoseStack pose, VertexConsumer vc, SensorClient.Reading reading,
+                          long now, double lockedPhase, int light, int overlay) {
+        drawLayer(pose, vc, models.get(SensorClient.BASE), 1f, 1f, 1f, 1f, light, overlay);
 
         if (reading.state() == SensorClient.State.SEARCHING) {
             float p = Math.floorMod(now, SONAR_MS) / (float) SONAR_MS;
             int ring = (int) (p * SensorClient.SONAR_RINGS);
             if (ring > 0) {
-                drawLayer(pose, vc, models.getModel(SensorClient.sonar(ring - 1)),
+                drawLayer(pose, vc, models.get(SensorClient.sonar(ring - 1)),
                         1f, 1f, 1f, 0.30f * (1f - p), LightTexture.FULL_BRIGHT, overlay);
             }
-            drawLayer(pose, vc, models.getModel(SensorClient.sonar(ring)),
+            drawLayer(pose, vc, models.get(SensorClient.sonar(ring)),
                     1f, 1f, 1f, 0.85f * (1f - p), LightTexture.FULL_BRIGHT, overlay);
         }
 
@@ -125,8 +155,8 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
         // the frame nearest the spring's angle: frame i points 11.25 degrees * i clockwise from up,
         // the same sense as the angle (positive = the target is to the player's right)
         int frame = Math.floorMod(Math.round(reading.angle() * SensorClient.NEEDLE_FRAMES), SensorClient.NEEDLE_FRAMES);
-        BakedModel tip = models.getModel(SensorClient.needle(frame));
-        BakedModel tail = models.getModel(SensorClient.tail(frame));
+        List<BakedQuad> tip = models.get(SensorClient.needle(frame));
+        List<BakedQuad> tail = models.get(SensorClient.tail(frame));
         if (reading.state() == SensorClient.State.LOCKED) {
             drawLayer(pose, vc, tail, LOCK_TAIL[0], LOCK_TAIL[1], LOCK_TAIL[2], 1f, light, overlay);
             float lampB;                      // the lamps pulse in step with the needle tip
@@ -134,13 +164,13 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
                 drawLayer(pose, vc, tip, LOST_TIP[0], LOST_TIP[1], LOST_TIP[2], 1f, LightTexture.FULL_BRIGHT, overlay);
                 lampB = 0.55f;                // steady and dim, like the lost tip
             } else {
-                double phase = advancePulse(now, PULSE_NEAR_MS + PULSE_FAR_MS * (1.0 - reading.closeness()));
+                double phase = lockedPhase;
                 float b = (float) (0.55 + 0.45 * (0.5 + 0.5 * Math.sin(2.0 * Math.PI * phase)));
                 drawLayer(pose, vc, tip, LOCK_TIP[0] * b, LOCK_TIP[1] * b, LOCK_TIP[2] * b, 1f, LightTexture.FULL_BRIGHT, overlay);
                 lampB = b;
             }
             if (reading.vertical() != SensorClient.Vertical.LEVEL) {
-                BakedModel lamp = models.getModel(reading.vertical() == SensorClient.Vertical.ABOVE
+                List<BakedQuad> lamp = models.get(reading.vertical() == SensorClient.Vertical.ABOVE
                         ? SensorClient.LAMP_UP : SensorClient.LAMP_DOWN);
                 drawLayer(pose, vc, lamp, lampB, lampB, lampB, 1f, LightTexture.FULL_BRIGHT, overlay);
             }
@@ -149,27 +179,6 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
             drawLayer(pose, vc, tip, REST[0], REST[1], REST[2], 1f, light, overlay);
         }
 
-        ItemStack sample = reading.sample();
-        if (sample.isEmpty()) return;
-
-        // Every sample with quads is drawn as its inventory icon pressed flat onto the lens: a
-        // block would otherwise stand out of the dial as a cube, and even a flat item is a slab
-        // 1/16 thick whose front face floats off the lens under perspective. Only models with no
-        // quads keep the plain GUI render: builtin/entity models (chest, banner, skull, bed,
-        // trident...) draw through a BEWLR, and ItemRenderer.render swaps the spyglass's in-hand
-        // model for its flat inventory model in GUI (ItemRenderer.java:105-112).
-        BakedModel model = mc.getItemRenderer().getModel(sample, mc.level, null, 0);
-        boolean flat = !model.isCustomRenderer() && !sample.is(Items.SPYGLASS);
-        pose.pushPose();
-        pose.translate(0.5f, 0.5f, flat ? DECAL_Z : 0.56f);   // lens centre
-        pose.scale(SAMPLE_SCALE, SAMPLE_SCALE, SAMPLE_SCALE);
-        if (flat) {
-            drawFlatIcon(pose, buffer, mc, sample, model, light, overlay);
-        } else {
-            mc.getItemRenderer().renderStatic(sample, ItemDisplayContext.GUI, light, overlay,
-                    pose, buffer, mc.level, 0);
-        }
-        pose.popPose();
     }
 
     /**
@@ -224,52 +233,38 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
      * step's top (no cullface, so in the unculled list, drawn last), painted over the upper step's
      * front.
      */
-    private static void drawFlatIcon(PoseStack ps, MultiBufferSource buffer, Minecraft mc,
-                                     ItemStack sample, BakedModel model, int light, int overlay) {
+    private static void drawFlatIcon(PoseStack ps, VertexConsumer vc,
+                                     ItemStackRenderState.LayerRenderState layer, int light, int overlay) {
         PoseStack gui = new PoseStack();
-        model.getTransforms().getTransform(ItemDisplayContext.GUI).apply(false, gui);
+        layer.transform.apply(false, gui.last());
         Matrix4f place = gui.last().pose();
         Matrix3f turn = gui.last().normal();
 
-        // the same quad lists, in the same order and with the same seed, as renderModelLists
-        List<BakedQuad> quads = new ArrayList<>();
-        RandomSource rand = RandomSource.create();
-        for (Direction side : Direction.values()) {
-            rand.setSeed(42L);
-            quads.addAll(model.getQuads(null, side, rand));
-        }
-        rand.setSeed(42L);
-        quads.addAll(model.getQuads(null, null, rand));
+        List<BakedQuad> quads = layer.quads;
 
         // a block's own sheet (cutout, or translucent-cull for translucent blocks), on the block
         // atlas, which is where the quads' baked UVs point
-        VertexConsumer vc = buffer.getBuffer(ItemBlockRenderTypes.getRenderType(sample, true));
         PoseStack.Pose dial = ps.last();
         Vector3f n = new Vector3f(), p = new Vector3f();
         for (BakedQuad quad : quads) {
-            Direction face = quad.getDirection();
+            Direction face = quad.direction();
             turn.transform(face.getStepX(), face.getStepY(), face.getStepZ(), n).normalize();
             if (n.z() <= 0f) continue;                // faces away from the viewer
             // a face looking straight at the viewer (a flat item's front) is lit in full; the
             // three faces of a block's isometric icon get the inventory look: top, left, right
             float shade = n.z() >= 0.9f || n.y() > 0.5f ? 1.0f : n.x() < 0f ? 0.8f : 0.6f;
-            int tint = quad.isTinted() ? mc.getItemColors().getColor(sample, quad.getTintIndex()) : -1;
+            int tint = quad.isTinted() && quad.tintIndex() < layer.tintLayers.length
+                    ? layer.tintLayers[quad.tintIndex()] : -1;
             float r = (tint >> 16 & 255) / 255f * shade;
             float g = (tint >> 8 & 255) / 255f * shade;
             float b = (tint & 255) / 255f * shade;
 
-            // vertex data is DefaultVertexFormat.BLOCK; IQuadTransformer holds its int offsets
-            int[] v = quad.getVertices();
-            for (int o = 0; o < v.length; o += IQuadTransformer.STRIDE) {
-                place.transformPosition(
-                        Float.intBitsToFloat(v[o + IQuadTransformer.POSITION]) - 0.5f,
-                        Float.intBitsToFloat(v[o + IQuadTransformer.POSITION + 1]) - 0.5f,
-                        Float.intBitsToFloat(v[o + IQuadTransformer.POSITION + 2]) - 0.5f, p);
-                int c = v[o + IQuadTransformer.COLOR];  // R,G,B,A bytes, R in the low byte
-                vc.addVertex(dial.pose(), p.x(), p.y(), p.z() * DECAL_DEPTH)  // pressed onto the socket
-                        .setColor(r * (c & 255) / 255f, g * (c >> 8 & 255) / 255f, b * (c >> 16 & 255) / 255f, 1f)
-                        .setUv(Float.intBitsToFloat(v[o + IQuadTransformer.UV0]),
-                            Float.intBitsToFloat(v[o + IQuadTransformer.UV0 + 1]))
+            for (int vertex = 0; vertex < 4; vertex++) {
+                place.transformPosition(quad.position(vertex), p);
+                long uv = quad.packedUV(vertex);
+                vc.addVertex(dial.pose(), p.x(), p.y(), p.z() * DECAL_DEPTH)
+                        .setColor(r, g, b, 1f)
+                        .setUv(UVPair.unpackU(uv), UVPair.unpackV(uv))
                         .setOverlay(overlay)
                         .setLight(light)
                         .setNormal(dial, 0f, 0f, 1f);
@@ -285,14 +280,14 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
      * One shard already lights a cell, so an unlit gauge always means empty. NO_CHARGE shows the
      * red row in a slow pulse (the server found ore but the sensor has no amethyst to lock with).
      */
-    private static void drawGauge(PoseStack pose, VertexConsumer vc, ModelManager models,
+    private static void drawGauge(PoseStack pose, VertexConsumer vc, Map<Identifier, List<BakedQuad>> models,
                                   SensorClient.Reading reading, long now, int overlay) {
         switch (reading.state()) {
             case NO_CHARGE -> {
                 double phase = Math.floorMod(now, EMPTY_MS) / (double) EMPTY_MS;
                 float a = (float) (EMPTY_ALPHA_LOW
                         + EMPTY_ALPHA_SWING * (0.5 + 0.5 * Math.sin(2.0 * Math.PI * phase)));
-                drawLayer(pose, vc, models.getModel(SensorClient.EMPTY), 1f, 1f, 1f, a, LightTexture.FULL_BRIGHT, overlay);
+                drawLayer(pose, vc, models.get(SensorClient.EMPTY), 1f, 1f, 1f, a, LightTexture.FULL_BRIGHT, overlay);
             }
             case DORMANT, SEARCHING, LOCKED -> {
                 int max = OreSensorItem.MAX_CHARGES;
@@ -302,7 +297,7 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
                 float brightness = (float) (CHARGE_BRIGHTNESS_LOW
                         + CHARGE_BRIGHTNESS_SWING * (0.5 + 0.5 * Math.sin(2.0 * Math.PI * phase)));
                 for (int i = 0; i < lit; i++) {
-                    drawLayer(pose, vc, models.getModel(SensorClient.charge(i)),
+                    drawLayer(pose, vc, models.get(SensorClient.charge(i)),
                             brightness, brightness, brightness, 1f, LightTexture.FULL_BRIGHT, overlay);
                 }
             }
@@ -320,14 +315,11 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
      * Writes one item/generated layer straight into {@code vc} with our own tint and alpha
      * (renderModelLists would route the tint through ItemColors and has no alpha).
      */
-    private static void drawLayer(PoseStack ps, VertexConsumer vc, BakedModel model,
+    private static void drawLayer(PoseStack ps, VertexConsumer vc, List<BakedQuad> model,
                                   float r, float g, float b, float a, int light, int overlay) {
         PoseStack.Pose pose = ps.last();
-        RandomSource rand = RandomSource.create(42L);
         float[] bright = {1f, 1f, 1f, 1f};
         int[] lights = {light, light, light, light};
-        for (Direction d : Direction.values())
-            for (BakedQuad q : model.getQuads(null, d, rand)) vc.putBulkData(pose, q, bright, r, g, b, a, lights, overlay, false);
-        for (BakedQuad q : model.getQuads(null, null, rand)) vc.putBulkData(pose, q, bright, r, g, b, a, lights, overlay, false);
+        for (BakedQuad q : model) vc.putBulkData(pose, q, bright, r, g, b, a, lights, overlay);
     }
 }

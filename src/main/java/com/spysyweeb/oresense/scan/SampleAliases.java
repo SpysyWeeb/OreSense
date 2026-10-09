@@ -1,11 +1,9 @@
 package com.spysyweeb.oresense.scan;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.Identifier;
 import net.minecraft.server.packs.resources.ResourceManager;
 import net.minecraft.server.packs.resources.SimpleJsonResourceReloadListener;
 import net.minecraft.util.GsonHelper;
@@ -35,16 +33,17 @@ import java.util.Set;
  * up; a data pack that overrides a file with an empty block list removes that alias. Unknown
  * ids are logged and skipped. /reload reads the folder again.
  */
-public final class SampleAliases extends SimpleJsonResourceReloadListener {
+public final class SampleAliases extends SimpleJsonResourceReloadListener<JsonElement> {
     public static final String DIRECTORY = "sample_aliases";
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final Gson GSON = new GsonBuilder().create();
 
     /** Replaced whole by each reload, so a reader always sees one complete load. */
     private static volatile Map<Item, Set<Block>> aliases = Map.of();
 
     public SampleAliases() {
-        super(GSON, DIRECTORY);
+        super(com.mojang.serialization.Codec.PASSTHROUGH.xmap(
+                dynamic -> dynamic.convert(com.mojang.serialization.JsonOps.INSTANCE).getValue(),
+                json -> new com.mojang.serialization.Dynamic<>(com.mojang.serialization.JsonOps.INSTANCE, json)), net.minecraft.resources.FileToIdConverter.json(DIRECTORY));
     }
 
     /** The blocks an item stands for through an alias; empty when it has none. */
@@ -58,7 +57,7 @@ public final class SampleAliases extends SimpleJsonResourceReloadListener {
     }
 
     @Override
-    protected void apply(Map<ResourceLocation, JsonElement> files, ResourceManager manager, ProfilerFiller profiler) {
+    protected void apply(Map<Identifier, JsonElement> files, ResourceManager manager, ProfilerFiller profiler) {
         Map<Item, Set<Block>> loaded = new HashMap<>();
         files.forEach((file, json) -> {
             try {
@@ -98,7 +97,7 @@ public final class SampleAliases extends SimpleJsonResourceReloadListener {
      */
     @Nullable
     private static Item item(String id) {
-        ResourceLocation location = ResourceLocation.tryParse(id);
+        Identifier location = Identifier.tryParse(id);
         if (location == null || !ForgeRegistries.ITEMS.containsKey(location)) return null;
         Item item = ForgeRegistries.ITEMS.getValue(location);
         return item == Items.AIR ? null : item;
@@ -107,7 +106,7 @@ public final class SampleAliases extends SimpleJsonResourceReloadListener {
     /** The registered block for an id, or null, the same way as {@link #item}. */
     @Nullable
     private static Block block(String id) {
-        ResourceLocation location = ResourceLocation.tryParse(id);
+        Identifier location = Identifier.tryParse(id);
         if (location == null || !ForgeRegistries.BLOCKS.containsKey(location)) return null;
         Block block = ForgeRegistries.BLOCKS.getValue(location);
         return block == Blocks.AIR ? null : block;
