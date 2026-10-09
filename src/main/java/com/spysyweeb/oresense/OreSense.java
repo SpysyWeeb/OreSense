@@ -11,7 +11,7 @@ import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.extensions.IForgeMenuType;
+import net.minecraftforge.common.extensions.IForgeContainerType;
 import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.event.OnDatapackSyncEvent;
 import net.minecraftforge.event.world.BlockEvent;
@@ -21,7 +21,7 @@ import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
+import net.minecraftforge.fmllegacy.RegistryObject;
 
 @Mod(OreSense.MODID)
 public class OreSense {
@@ -37,7 +37,7 @@ public class OreSense {
                     new Item.Properties().stacksTo(1).tab(CreativeModeTab.TAB_TOOLS)));
 
     public static final RegistryObject<MenuType<OreSensorMenu>> ORE_SENSOR_MENU =
-            MENUS.register("ore_sensor", () -> IForgeMenuType.create(OreSensorMenu::fromNetwork));
+            MENUS.register("ore_sensor", () -> IForgeContainerType.create(OreSensorMenu::fromNetwork));
 
     public OreSense() {
         IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();

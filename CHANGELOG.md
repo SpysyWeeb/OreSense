@@ -2,10 +2,10 @@
 
 ## 1.0.1 — 2026-10-08
 
-- Ported to Minecraft 1.18 with Forge 38.0.17.
-- Restored copper and deepslate ore coverage missing from Forge 38.0.17's ore tags.
-- Added the amethyst charge tag missing from Forge 38.0.17.
-- Lock and release cues use the amethyst chime available in Minecraft 1.18.
+- Ported to Minecraft 1.17.1 with Forge 37.1.1.
+- Restored copper and deepslate ore coverage missing from Forge 37.1.1's ore tags.
+- Added the amethyst charge tag missing from Forge 37.1.1.
+- Lock and release cues use the amethyst chime available in Minecraft 1.17.1.
 - The charge gauge now shows stored amethyst even when the ore sample slot is empty or the sensor is
   dormant. Adding or removing a sample no longer hides the charge level.
 - Filled charge pixels pulse slowly between 75% and full brightness.

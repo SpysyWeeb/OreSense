@@ -17,7 +17,7 @@ import net.minecraft.world.item.Items;
 import net.minecraft.world.InteractionHand;
 
 public class OreSensorMenu extends AbstractContainerMenu {
-    // Forge 38 does not supply this tag; our data pack supplies the vanilla shard entry.
+    // Forge 37 does not supply this tag; our data pack supplies the vanilla shard entry.
     private static final ResourceLocation AMETHYST_TAG = new ResourceLocation("forge", "gems/amethyst");
     /**
      * Menu slots: the sample, the charges, then inventory 9..35 and hotbar 0..8. On screen the

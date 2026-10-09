@@ -15,7 +15,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.client.event.ModelRegistryEvent;
-import net.minecraftforge.client.model.ForgeModelBakery;
+import net.minecraftforge.client.model.ModelLoader;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
@@ -98,14 +98,14 @@ public class SensorClient {
 
     @SubscribeEvent
     public static void registerModels(ModelRegistryEvent event) {
-        ForgeModelBakery.addSpecialModel(BASE);
-        ForgeModelBakery.addSpecialModel(LAMP_UP);
-        ForgeModelBakery.addSpecialModel(LAMP_DOWN);
-        ForgeModelBakery.addSpecialModel(EMPTY);
-        for (ModelResourceLocation frame : NEEDLE) ForgeModelBakery.addSpecialModel(frame);
-        for (ModelResourceLocation frame : TAIL) ForgeModelBakery.addSpecialModel(frame);
-        for (ModelResourceLocation ring : SONAR) ForgeModelBakery.addSpecialModel(ring);
-        for (ModelResourceLocation cell : CHARGE) ForgeModelBakery.addSpecialModel(cell);
+        ModelLoader.addSpecialModel(BASE);
+        ModelLoader.addSpecialModel(LAMP_UP);
+        ModelLoader.addSpecialModel(LAMP_DOWN);
+        ModelLoader.addSpecialModel(EMPTY);
+        for (ModelResourceLocation frame : NEEDLE) ModelLoader.addSpecialModel(frame);
+        for (ModelResourceLocation frame : TAIL) ModelLoader.addSpecialModel(frame);
+        for (ModelResourceLocation ring : SONAR) ModelLoader.addSpecialModel(ring);
+        for (ModelResourceLocation cell : CHARGE) ModelLoader.addSpecialModel(cell);
     }
 
     @SubscribeEvent

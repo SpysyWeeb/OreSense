@@ -31,7 +31,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.minecraftforge.network.NetworkHooks;
+import net.minecraftforge.fmllegacy.network.NetworkHooks;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -41,7 +41,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 public class OreSensorItem extends Item {
-    // 1.18 has no amethyst resonance asset. Use its chime and compensate for the
+    // 1.17.1 has no amethyst resonance asset. Use its chime and compensate for the
     // 0.2 volume in vanilla's sounds.json so lock/release keep their intended loudness.
     private static final float AMETHYST_CHIME_VOLUME_SCALE = 5.0f;
 
