@@ -45,7 +45,7 @@ public final class SampleAliases extends SimpleJsonResourceReloadListener<JsonEl
     public SampleAliases() {
         super(com.mojang.serialization.Codec.PASSTHROUGH.xmap(
                 dynamic -> dynamic.convert(com.mojang.serialization.JsonOps.INSTANCE).getValue(),
-                json -> new com.mojang.serialization.Dynamic<>(com.mojang.serialization.JsonOps.INSTANCE, json)), DIRECTORY);
+                json -> new com.mojang.serialization.Dynamic<>(com.mojang.serialization.JsonOps.INSTANCE, json)), net.minecraft.resources.FileToIdConverter.json(DIRECTORY));
     }
 
     @Override

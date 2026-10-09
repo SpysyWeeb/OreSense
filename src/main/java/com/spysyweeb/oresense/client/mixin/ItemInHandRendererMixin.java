@@ -18,21 +18,22 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public abstract class ItemInHandRendererMixin {
     @Shadow @Final private Minecraft minecraft;
     @Unique private int oresense$lastSelectedSlot = -1;
+    @Shadow private boolean shouldInstantlyReplaceVisibleItem(ItemStack oldStack, ItemStack newStack) { throw new AssertionError(); }
 
     @Redirect(method = "tick", at = @At(value = "INVOKE", ordinal = 0,
-            target = "Lnet/minecraft/world/item/ItemStack;matches(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/item/ItemStack;)Z"))
-    private boolean oresense$keepMainHandReading(ItemStack oldStack, ItemStack newStack) {
+            target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;shouldInstantlyReplaceVisibleItem(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/item/ItemStack;)Z"))
+    private boolean oresense$keepMainHandReading(ItemInHandRenderer renderer, ItemStack oldStack, ItemStack newStack) {
         if (oldStack.getItem() instanceof OreSensorItem && oldStack.getItem() == newStack.getItem()) {
             return minecraft.player.getInventory().selected == oresense$lastSelectedSlot;
         }
-        return ItemStack.matches(oldStack, newStack);
+        return shouldInstantlyReplaceVisibleItem(oldStack, newStack);
     }
 
     @Redirect(method = "tick", at = @At(value = "INVOKE", ordinal = 1,
-            target = "Lnet/minecraft/world/item/ItemStack;matches(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/item/ItemStack;)Z"))
-    private boolean oresense$keepOffHandReading(ItemStack oldStack, ItemStack newStack) {
+            target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;shouldInstantlyReplaceVisibleItem(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/item/ItemStack;)Z"))
+    private boolean oresense$keepOffHandReading(ItemInHandRenderer renderer, ItemStack oldStack, ItemStack newStack) {
         if (oldStack.getItem() instanceof OreSensorItem && oldStack.getItem() == newStack.getItem()) return true;
-        return ItemStack.matches(oldStack, newStack);
+        return shouldInstantlyReplaceVisibleItem(oldStack, newStack);
     }
 
     @Inject(method = "tick", at = @At("TAIL"))
