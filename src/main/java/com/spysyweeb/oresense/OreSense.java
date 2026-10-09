@@ -10,14 +10,12 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.inventory.MenuType;
-import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.extensions.IForgeMenuType;
 import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
 import net.minecraftforge.event.OnDatapackSyncEvent;
 import net.minecraftforge.event.level.BlockEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.IEventBus;
+import net.minecraftforge.eventbus.api.listener.Priority;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.minecraftforge.registries.DeferredRegister;
@@ -34,24 +32,26 @@ public class OreSense {
             DeferredRegister.create(ForgeRegistries.MENU_TYPES, MODID);
 
     public static final RegistryObject<Item> ORE_SENSOR =
-            ITEMS.register("ore_sensor", () -> new OreSensorItem(new Item.Properties().stacksTo(1)));
+            ITEMS.register("ore_sensor", () -> new OreSensorItem(new Item.Properties().setId(ITEMS.key("ore_sensor")).stacksTo(1)));
 
     public static final RegistryObject<MenuType<OreSensorMenu>> ORE_SENSOR_MENU =
             MENUS.register("ore_sensor", () -> IForgeMenuType.create(OreSensorMenu::fromNetwork));
 
-    public OreSense() {
-        IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();
+    public OreSense(FMLJavaModLoadingContext context) {
+        var bus = context.getModBusGroup();
         ITEMS.register(bus);
         MENUS.register(bus);
-        bus.addListener(this::addCreative);
-        net.minecraftforge.fml.ModLoadingContext.get().registerConfig(
+        BuildCreativeModeTabContentsEvent.getBus(bus).addListener(this::addCreative);
+        context.registerConfig(
                 net.minecraftforge.fml.config.ModConfig.Type.COMMON, Config.SPEC);
+        net.minecraftforge.fml.DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT,
+                () -> () -> com.spysyweeb.oresense.client.SensorClient.initialize(context.getModBusGroup()));
         OreSenseNetwork.register();
-        MinecraftForge.EVENT_BUS.addListener(this::reloadSamples);
-        MinecraftForge.EVENT_BUS.addListener(this::syncSamples);
+        AddReloadListenerEvent.BUS.addListener(this::reloadSamples);
+        OnDatapackSyncEvent.BUS.addListener(this::syncSamples);
         // lowest priority, and never for a cancelled break: every mod that may refuse the break
         // (claims, spawn protection, adventure mode) has had its say before a charge is spent
-        MinecraftForge.EVENT_BUS.addListener(EventPriority.LOWEST, false, BlockEvent.BreakEvent.class, this::spendCharge);
+        BlockEvent.BreakEvent.BUS.addListener(Priority.LOWEST, this::spendCharge);
     }
 
     /**
