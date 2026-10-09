@@ -2,6 +2,8 @@
 
 ## 1.0.2 — 2026-10-09
 
+- Added Quilt Loader support for Minecraft 1.20.4, with matching Fabric API required.
+
 - Added Minecraft 1.20.4 support with Fabric Loader and Fabric API.
 
 - Renamed the sensor menu's Ore slot to Sample to reflect that it also accepts ore drops and items made
