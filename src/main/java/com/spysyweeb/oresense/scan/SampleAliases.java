@@ -1,7 +1,5 @@
 package com.spysyweeb.oresense.scan;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.mojang.logging.LogUtils;
@@ -35,16 +33,17 @@ import java.util.Set;
  * up; a data pack that overrides a file with an empty block list removes that alias. Unknown
  * ids are logged and skipped. /reload reads the folder again.
  */
-public final class SampleAliases extends SimpleJsonResourceReloadListener {
+public final class SampleAliases extends SimpleJsonResourceReloadListener<JsonElement> {
     public static final String DIRECTORY = "sample_aliases";
     private static final Logger LOGGER = LogUtils.getLogger();
-    private static final Gson GSON = new GsonBuilder().create();
 
     /** Replaced whole by each reload, so a reader always sees one complete load. */
     private static volatile Map<Item, Set<Block>> aliases = Map.of();
 
     public SampleAliases() {
-        super(GSON, DIRECTORY);
+        super(com.mojang.serialization.Codec.PASSTHROUGH.xmap(
+                dynamic -> dynamic.convert(com.mojang.serialization.JsonOps.INSTANCE).getValue(),
+                json -> new com.mojang.serialization.Dynamic<>(com.mojang.serialization.JsonOps.INSTANCE, json)), net.minecraft.resources.FileToIdConverter.json(DIRECTORY));
     }
 
     /** The blocks an item stands for through an alias; empty when it has none. */
