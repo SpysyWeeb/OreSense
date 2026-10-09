@@ -1,6 +1,10 @@
 package com.spysyweeb.oresense.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.math.Matrix3f;
+import com.mojang.math.Matrix4f;
+import com.mojang.math.Vector3f;
+import com.mojang.math.Vector4f;
 import com.spysyweeb.oresense.OreSensorItem;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.Util;
@@ -20,9 +24,6 @@ import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraftforge.client.model.IQuadTransformer;
-import org.joml.Matrix3f;
-import org.joml.Matrix4f;
-import org.joml.Vector3f;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -177,7 +178,7 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
      * sits in the glass like a picture instead of a cube poking out of the dial.
      * <p>
      * Each quad goes through the model's own GUI transform, built by the engine's own
-     * {@code ItemTransform.apply} (translate, then {@code rotationXYZ}, then scale; Forge's
+     * {@code ItemTransform.apply} (translate, then an XYZ Euler quaternion, then scale; Forge's
      * right_rotation after that, identity for vanilla), after the same -0.5 centring
      * ItemRenderer.render does. Then z is pressed to {@code DECAL_DEPTH} of itself, so every face
      * lies on the socket plane as far as the eye can tell, while the depth test still sees which
@@ -188,7 +189,7 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
      * decal's normal is the dial's own front normal, so it is lit exactly like the dial face.
      * <p>
      * Worked through for a vanilla cube (block/block GUI transform: rotation (30, 225, 0),
-     * translation 0, scale 0.625). rotationXYZ(30, 225, 0) = Rx(30)*Ry(225): turn about y, then x.
+     * translation 0, scale 0.625). The quaternion gives Rx(30)*Ry(225): turn about y, then x.
      * <pre>
      *   Ry(225): x' = -0.7071(x + z)   y' = y                  z' = 0.7071(x - z)
      *   Rx(30):  x' = x                y' = 0.8660y - 0.5000z  z' = 0.5000y + 0.8660z
@@ -245,10 +246,13 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
         // atlas, which is where the quads' baked UVs point
         VertexConsumer vc = buffer.getBuffer(ItemBlockRenderTypes.getRenderType(sample, true));
         PoseStack.Pose dial = ps.last();
-        Vector3f n = new Vector3f(), p = new Vector3f();
+        Vector3f n = new Vector3f();
+        Vector4f p = new Vector4f();
         for (BakedQuad quad : quads) {
             Direction face = quad.getDirection();
-            turn.transform(face.getStepX(), face.getStepY(), face.getStepZ(), n).normalize();
+            n.set(face.getStepX(), face.getStepY(), face.getStepZ());
+            n.transform(turn);
+            n.normalize();
             if (n.z() <= 0f) continue;                // faces away from the viewer
             // a face looking straight at the viewer (a flat item's front) is lit in full; the
             // three faces of a block's isometric icon get the inventory look: top, left, right
@@ -261,10 +265,12 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
             // vertex data is DefaultVertexFormat.BLOCK; IQuadTransformer holds its int offsets
             int[] v = quad.getVertices();
             for (int o = 0; o < v.length; o += IQuadTransformer.STRIDE) {
-                place.transformPosition(
+                // w=1 keeps the model's GUI translation; this is a position, not a direction.
+                p.set(
                         Float.intBitsToFloat(v[o + IQuadTransformer.POSITION]) - 0.5f,
                         Float.intBitsToFloat(v[o + IQuadTransformer.POSITION + 1]) - 0.5f,
-                        Float.intBitsToFloat(v[o + IQuadTransformer.POSITION + 2]) - 0.5f, p);
+                        Float.intBitsToFloat(v[o + IQuadTransformer.POSITION + 2]) - 0.5f, 1f);
+                p.transform(place);
                 int c = v[o + IQuadTransformer.COLOR];  // R,G,B,A bytes, R in the low byte
                 vc.vertex(dial.pose(), p.x(), p.y(), p.z() * DECAL_DEPTH)  // pressed onto the socket
                         .color(r * (c & 255) / 255f, g * (c >> 8 & 255) / 255f, b * (c >> 16 & 255) / 255f, 1f)

@@ -7,13 +7,12 @@ import com.spysyweeb.oresense.scan.SampleAliases;
 import com.spysyweeb.oresense.scan.SampleResolver;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.item.CreativeModeTabs;
+import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.inventory.MenuType;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.extensions.IForgeMenuType;
 import net.minecraftforge.event.AddReloadListenerEvent;
-import net.minecraftforge.event.CreativeModeTabEvent;
 import net.minecraftforge.event.OnDatapackSyncEvent;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
@@ -34,7 +33,8 @@ public class OreSense {
             DeferredRegister.create(ForgeRegistries.MENU_TYPES, MODID);
 
     public static final RegistryObject<Item> ORE_SENSOR =
-            ITEMS.register("ore_sensor", () -> new OreSensorItem(new Item.Properties().stacksTo(1)));
+            ITEMS.register("ore_sensor", () -> new OreSensorItem(
+                    new Item.Properties().stacksTo(1).tab(CreativeModeTab.TAB_TOOLS)));
 
     public static final RegistryObject<MenuType<OreSensorMenu>> ORE_SENSOR_MENU =
             MENUS.register("ore_sensor", () -> IForgeMenuType.create(OreSensorMenu::fromNetwork));
@@ -43,7 +43,6 @@ public class OreSense {
         IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();
         ITEMS.register(bus);
         MENUS.register(bus);
-        bus.addListener(this::addCreative);
         net.minecraftforge.fml.ModLoadingContext.get().registerConfig(
                 net.minecraftforge.fml.config.ModConfig.Type.COMMON, Config.SPEC);
         OreSenseNetwork.register();
@@ -98,17 +97,6 @@ public class OreSense {
         }
         for (ServerPlayer player : event.getPlayerList().getPlayers()) {
             OreSenseNetwork.send(player, packet);
-        }
-    }
-
-    /**
-     * The tab is rebuilt on every server join. On a server that does not ship this mod, Forge's
-     * registry sync leaves ORE_SENSOR absent for the session, so an unconditional get() throws
-     * and Forge reports a mod loading error (seen in the Mine instance log on 2026-09-23).
-     */
-    private void addCreative(CreativeModeTabEvent.BuildContents event) {
-        if (event.getTab() == CreativeModeTabs.TOOLS_AND_UTILITIES && ORE_SENSOR.isPresent()) {
-            event.accept(ORE_SENSOR.get());
         }
     }
 }
