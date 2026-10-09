@@ -21,6 +21,7 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;
+import net.fabricmc.fabric.api.item.v1.FabricItem;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.entity.Entity;
@@ -39,7 +40,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 
-public class OreSensorItem extends Item {
+public class OreSensorItem extends Item implements FabricItem {
     public static final String SAMPLE_TAG = "Sample";
     private static final String TARGET_TAG = "Target";      // [x,y,z]: the block the needle points at
     private static final String DIM_TAG = "TargetDim";
@@ -661,5 +662,11 @@ public class OreSensorItem extends Item {
 
     @Override
     public boolean isFoil(ItemStack stack) { return false; }
+
+    /** Scanning updates must not restart a block being mined with the sensor. */
+    @Override
+    public boolean allowContinuingBlockBreaking(Player player, ItemStack oldStack, ItemStack newStack) {
+        return true;
+    }
 
 }
