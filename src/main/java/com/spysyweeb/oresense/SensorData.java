@@ -43,11 +43,11 @@ public final class SensorData {
         if (stored == null || !stored.contains(OreSensorItem.SAMPLE_TAG)) return;
         CompoundTag data = stored.copyTag();
         if (!sensor.has(DataComponents.CONTAINER)) {
-            CompoundTag legacy = data.getCompound(OreSensorItem.SAMPLE_TAG);
+            CompoundTag legacy = data.getCompoundOrEmpty(OreSensorItem.SAMPLE_TAG);
             Dynamic<Tag> fixed = DataFixers.getDataFixer().update(References.ITEM_STACK,
                     new Dynamic<>(NbtOps.INSTANCE, legacy), 3465,
                     SharedConstants.getCurrentVersion().getDataVersion().getVersion());
-            ItemStack sample = ItemStack.parseOptional(registries, (CompoundTag) fixed.getValue());
+            ItemStack sample = ItemStack.parse(registries, fixed.getValue()).orElse(ItemStack.EMPTY);
             if (sample.isEmpty()) return; // retain unresolvable legacy data instead of discarding it
             sample(sensor, sample);
         }

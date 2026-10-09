@@ -1,5 +1,5 @@
 plugins {
-    id 'fabric-loom' version '1.8.13'
+    id 'fabric-loom' version '1.10.5'
     id 'maven-publish'
 }
 
@@ -8,6 +8,7 @@ group = mod_group_id
 base.archivesName = "${mod_id}-fabric-${minecraft_version}"
 
 loom {
+    accessWidenerPath = file("src/main/resources/oresense.accesswidener")
     mixin {
         defaultRefmapName = 'oresense.refmap.json'
     }
@@ -24,7 +25,7 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
 }
 
-// Minecraft 1.21.3 uses Java 21.
+// Minecraft 1.21.5 uses Java 21.
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
