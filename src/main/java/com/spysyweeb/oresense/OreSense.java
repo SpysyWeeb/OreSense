@@ -45,8 +45,9 @@ public class OreSense {
         context.registerConfig(
                 net.minecraftforge.fml.config.ModConfig.Type.COMMON, Config.SPEC);
         OreSenseNetwork.register();
-        net.minecraftforge.fml.DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT,
-                () -> () -> com.spysyweeb.oresense.client.SensorClient.initialize(context.getModBusGroup()));
+        if (net.minecraftforge.fml.loading.FMLEnvironment.dist == net.minecraftforge.api.distmarker.Dist.CLIENT) {
+            com.spysyweeb.oresense.client.SensorClient.initialize(context.getModBusGroup());
+        }
         AddReloadListenerEvent.BUS.addListener(this::reloadSamples);
         OnDatapackSyncEvent.BUS.addListener(this::syncSamples);
         // lowest priority, and never for a cancelled break: every mod that may refuse the break
