@@ -3,7 +3,7 @@ package com.spysyweeb.oresense.scan;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.Identifier;
-import net.minecraftforge.common.Tags;
+import net.neoforged.neoforge.common.Tags;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.server.ReloadableServerRegistries;
 import com.spysyweeb.oresense.OreSense;
