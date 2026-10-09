@@ -2,7 +2,9 @@
 
 ## 1.0.2 — 2026-10-09
 
-- Added Minecraft 26.3 support for Forge 66.0.9 with Java 25.
+- Ported loader registration, networking, item models, and common ore and ingredient tags to NeoForge.
+
+- Added Minecraft 26.3 support for NeoForge 26.3.0.64-beta with Java 25.
 - Updated rendering, menus, and recipe data for Minecraft 26.3 while preserving the animated dial and saved sensors.
 - Renamed the sensor menu's Ore slot to Sample to reflect that it also accepts ore drops and items made
   from them.

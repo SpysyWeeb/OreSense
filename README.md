@@ -1,6 +1,6 @@
 # OreSense
 
-A prospecting sensor for Minecraft Forge 26.3. Tune it with an ore, with what the ore drops, or with
+A prospecting sensor for Minecraft 26.3 on NeoForge. Tune it with an ore, with what the ore drops, or with
 something made from it, load it with amethyst shards, and follow the needle to the vein.
 
 OreSense adds one item, the **Ore Sensor**. It is a compass-style dial with a red needle, two indicator
@@ -83,9 +83,11 @@ The mapping is rebuilt from the server's loot tables and recipes on every data p
 
 ## Requirements
 
-Minecraft 26.3 with Forge 66.0.9 or newer within the 66.x series, and Java 25. The mod must be installed on both the client and the server: the
+Minecraft 26.3 with NeoForge 26.3.0.64-beta or newer within the 26.3.0 series, and Java 25. The mod must be installed on both the client and the server: the
 scanning, locking, and charge logic runs on the server, and the sensor's screen uses a networked menu.
 A client with OreSense will not connect to a server without it, and the other way round.
+
+NeoForge for Minecraft 26.3 is currently available as a beta loader.
 
 ## Building
 
