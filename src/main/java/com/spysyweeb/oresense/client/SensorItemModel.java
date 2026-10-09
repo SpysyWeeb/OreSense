@@ -3,12 +3,12 @@ package com.spysyweeb.oresense.client;
 import com.mojang.serialization.MapCodec;
 import com.spysyweeb.oresense.OreSensorItem;
 import net.minecraft.client.multiplayer.ClientLevel;
-import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.resources.model.geometry.BakedQuad;
 import net.minecraft.client.renderer.item.ItemModel;
 import net.minecraft.client.renderer.item.ItemModelResolver;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.client.renderer.item.ModelRenderProperties;
-import net.minecraft.client.resources.model.BlockModelRotation;
+import net.minecraft.client.renderer.block.dispatch.BlockModelRotation;
 import net.minecraft.client.resources.model.ResolvableModel;
 import net.minecraft.resources.Identifier;
 import net.minecraft.world.entity.ItemOwner;
@@ -20,7 +20,7 @@ import java.util.List;
 import java.util.Map;
 
 /** Captures the held-stack reading and GUI sample before rendering is queued. */
-public record SensorItemModel(ModelRenderProperties properties, SensorRenderer renderer) implements ItemModel {
+public record SensorItemModel(ModelRenderProperties properties, SensorRenderer renderer, org.joml.Matrix4fc transformation) implements ItemModel {
     public record Snapshot(SensorClient.Reading reading, ItemStackRenderState sample) {}
     private static final Vector3f[] EXTENTS = {
         new Vector3f(0, 0, 0.46875f), new Vector3f(0, 1, 0.46875f),
@@ -43,6 +43,7 @@ public record SensorItemModel(ModelRenderProperties properties, SensorRenderer r
         layer.setupSpecialModel(renderer, new Snapshot(reading, sample));
         layer.setExtents(() -> EXTENTS);
         properties.applyToLayer(layer, context);
+        layer.setLocalTransform(transformation);
     }
 
     public record Unbaked() implements ItemModel.Unbaked {
@@ -53,7 +54,7 @@ public record SensorItemModel(ModelRenderProperties properties, SensorRenderer r
             resolver.markDependency(DISPLAY);
             SensorClient.layers().forEach(resolver::markDependency);
         }
-        @Override public ItemModel bake(ItemModel.BakingContext context) {
+        @Override public ItemModel bake(ItemModel.BakingContext context, org.joml.Matrix4fc transformation) {
             var baker = context.blockModelBaker();
             Map<Identifier, List<BakedQuad>> models = new HashMap<>();
             for (Identifier layer : SensorClient.layers()) {
@@ -63,7 +64,7 @@ public record SensorItemModel(ModelRenderProperties properties, SensorRenderer r
             }
             var display = baker.getModel(DISPLAY);
             return new SensorItemModel(ModelRenderProperties.fromResolvedModel(baker, display, display.getTopTextureSlots()),
-                    new SensorRenderer(models));
+                    new SensorRenderer(models), new org.joml.Matrix4f(transformation));
         }
     }
 }
