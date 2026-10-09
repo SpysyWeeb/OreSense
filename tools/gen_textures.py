@@ -3,7 +3,7 @@
 
 The dial is concept A of the 2026-09-24 concept sheet, "vanilla compass, gold case": 16x16
 textures at the vanilla item rate, hard pixels (alpha 0 or 255, no anti-aliasing, no
-supersampling), every colour lifted from a named vanilla 1.19.1 texture and checked against it
+supersampling), every colour lifted from a named vanilla 1.19 texture and checked against it
 (lift()). Each layer is drawn at runtime by SensorRenderer as its own item/generated model, all
 on the same plane, so the draw order decides what is on top:
 base -> sonar ring -> charge gauge -> needle tail -> needle tip -> lit lamp -> sample item.
@@ -63,7 +63,7 @@ ROOT = Path(__file__).resolve().parent.parent
 ASSETS = ROOT / "src" / "main" / "resources" / "assets" / "oresense"
 TEXTURES = ASSETS / "textures" / "item"
 MODELS = ASSETS / "models" / "item"
-CLIENT_JAR = Path.home() / ".gradle/caches/forge_gradle/minecraft_repo/versions/1.19.1/client-extra.jar"
+CLIENT_JAR = Path.home() / ".gradle/caches/forge_gradle/minecraft_repo/versions/1.19/client-extra.jar"
 
 SIZE = 16
 CENTRE = 8.0
@@ -481,7 +481,7 @@ def write_assets(layers):
 # textures/gui/ore_sensor.png, drawn by OreSensorScreen: vanilla's hopper
 # layout (a 176x133 panel: title, one row of slots, player inventory, hotbar)
 # with only the two slots OreSensorMenu has, the charges and the sample. The
-# colours are the palette of 1.19.1's textures/gui/container/hopper.png, so
+# colours are the palette of 1.19's textures/gui/container/hopper.png, so
 # everything but the top slot row matches it pixel for pixel.
 # The canvas is 256x256 because the screen's short blit form assumes a
 # texture that size.

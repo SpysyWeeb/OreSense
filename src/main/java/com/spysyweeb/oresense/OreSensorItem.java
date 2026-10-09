@@ -40,7 +40,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 public class OreSensorItem extends Item {
-    // 1.19.1 has no amethyst resonance asset. Use its chime and compensate for the
+    // 1.19 has no amethyst resonance asset. Use its chime and compensate for the
     // 0.2 volume in vanilla's sounds.json so lock/release keep their intended loudness.
     private static final float AMETHYST_CHIME_VOLUME_SCALE = 5.0f;
 

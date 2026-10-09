@@ -2,8 +2,8 @@
 
 ## 1.0.1 — 2026-10-08
 
-- Ported to Minecraft 1.19.1 with Forge 42.0.9.
-- Lock and release cues use the amethyst chime available in Minecraft 1.19.1.
+- Ported to Minecraft 1.19 with Forge 41.1.0.
+- Lock and release cues use the amethyst chime available in Minecraft 1.19.
 - The charge gauge now shows stored amethyst even when the ore sample slot is empty or the sensor is
   dormant. Adding or removing a sample no longer hides the charge level.
 - Filled charge pixels pulse slowly between 75% and full brightness.
