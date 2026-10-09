@@ -10,9 +10,9 @@ import net.minecraft.client.renderer.rendertype.RenderTypes;
 import net.minecraft.client.renderer.texture.TextureAtlas;
 import net.minecraft.resources.Identifier;
 import java.util.Map;
-import net.minecraft.client.renderer.LightTexture;
+import net.minecraft.util.LightCoordsUtil;
 import net.minecraft.client.renderer.SubmitNodeCollector;
-import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.client.resources.model.geometry.BakedQuad;
 
 import net.minecraft.client.resources.model.ModelManager;
 import net.minecraft.core.Direction;
@@ -94,7 +94,7 @@ public class SensorRenderer implements SpecialModelRenderer<SensorItemModel.Snap
     }
 
     @Override
-    public void submit(SensorItemModel.Snapshot snapshot, ItemDisplayContext context, PoseStack pose,
+    public void submit(SensorItemModel.Snapshot snapshot, PoseStack pose,
                        SubmitNodeCollector collector, int light, int overlay, boolean foil, int outlineColor) {
         SensorClient.Reading reading = snapshot.reading();
         long now = Util.getMillis();
@@ -118,8 +118,13 @@ public class SensorRenderer implements SpecialModelRenderer<SensorItemModel.Snap
         if (flat) {
             for (int i = 0; i < sample.activeLayerCount; i++) {
                 ItemStackRenderState.LayerRenderState layer = sample.layers[i];
-                collector.order(1).submitCustomGeometry(pose, layer.renderType,
-                        (savedPose, vc) -> drawFlatIcon(poseStack(savedPose), vc, layer, light, overlay));
+                Map<net.minecraft.client.renderer.rendertype.RenderType, List<BakedQuad>> groups =
+                        new java.util.LinkedHashMap<>();
+                for (BakedQuad quad : layer.quads) {
+                    groups.computeIfAbsent(quad.materialInfo().itemRenderType(), key -> new java.util.ArrayList<>()).add(quad);
+                }
+                groups.forEach((type, quads) -> collector.order(1).submitCustomGeometry(pose, type,
+                        (savedPose, vc) -> drawFlatIcon(poseStack(savedPose), vc, layer, quads, light, overlay)));
             }
         } else {
             sample.submit(pose, collector, light, overlay, outlineColor);
@@ -142,10 +147,10 @@ public class SensorRenderer implements SpecialModelRenderer<SensorItemModel.Snap
             int ring = (int) (p * SensorClient.SONAR_RINGS);
             if (ring > 0) {
                 drawLayer(pose, vc, models.get(SensorClient.sonar(ring - 1)),
-                        1f, 1f, 1f, 0.30f * (1f - p), LightTexture.FULL_BRIGHT, overlay);
+                        1f, 1f, 1f, 0.30f * (1f - p), LightCoordsUtil.FULL_BRIGHT, overlay);
             }
             drawLayer(pose, vc, models.get(SensorClient.sonar(ring)),
-                    1f, 1f, 1f, 0.85f * (1f - p), LightTexture.FULL_BRIGHT, overlay);
+                    1f, 1f, 1f, 0.85f * (1f - p), LightCoordsUtil.FULL_BRIGHT, overlay);
         }
 
         // the gauge before the needle: a needle pointing down crosses the gauge row under the
@@ -161,18 +166,18 @@ public class SensorRenderer implements SpecialModelRenderer<SensorItemModel.Snap
             drawLayer(pose, vc, tail, LOCK_TAIL[0], LOCK_TAIL[1], LOCK_TAIL[2], 1f, light, overlay);
             float lampB;                      // the lamps pulse in step with the needle tip
             if (reading.lost()) {
-                drawLayer(pose, vc, tip, LOST_TIP[0], LOST_TIP[1], LOST_TIP[2], 1f, LightTexture.FULL_BRIGHT, overlay);
+                drawLayer(pose, vc, tip, LOST_TIP[0], LOST_TIP[1], LOST_TIP[2], 1f, LightCoordsUtil.FULL_BRIGHT, overlay);
                 lampB = 0.55f;                // steady and dim, like the lost tip
             } else {
                 double phase = lockedPhase;
                 float b = (float) (0.55 + 0.45 * (0.5 + 0.5 * Math.sin(2.0 * Math.PI * phase)));
-                drawLayer(pose, vc, tip, LOCK_TIP[0] * b, LOCK_TIP[1] * b, LOCK_TIP[2] * b, 1f, LightTexture.FULL_BRIGHT, overlay);
+                drawLayer(pose, vc, tip, LOCK_TIP[0] * b, LOCK_TIP[1] * b, LOCK_TIP[2] * b, 1f, LightCoordsUtil.FULL_BRIGHT, overlay);
                 lampB = b;
             }
             if (reading.vertical() != SensorClient.Vertical.LEVEL) {
                 List<BakedQuad> lamp = models.get(reading.vertical() == SensorClient.Vertical.ABOVE
                         ? SensorClient.LAMP_UP : SensorClient.LAMP_DOWN);
-                drawLayer(pose, vc, lamp, lampB, lampB, lampB, 1f, LightTexture.FULL_BRIGHT, overlay);
+                drawLayer(pose, vc, lamp, lampB, lampB, lampB, 1f, LightCoordsUtil.FULL_BRIGHT, overlay);
             }
         } else {
             drawLayer(pose, vc, tail, REST[0], REST[1], REST[2], 1f, light, overlay);
@@ -234,13 +239,12 @@ public class SensorRenderer implements SpecialModelRenderer<SensorItemModel.Snap
      * front.
      */
     private static void drawFlatIcon(PoseStack ps, VertexConsumer vc,
-                                     ItemStackRenderState.LayerRenderState layer, int light, int overlay) {
+                                     ItemStackRenderState.LayerRenderState layer, List<BakedQuad> quads, int light, int overlay) {
         PoseStack gui = new PoseStack();
-        layer.transform.apply(false, gui.last());
+        layer.applyTransform(gui.last());
         Matrix4f place = gui.last().pose();
         Matrix3f turn = gui.last().normal();
 
-        List<BakedQuad> quads = layer.quads;
 
         // a block's own sheet (cutout, or translucent-cull for translucent blocks), on the block
         // atlas, which is where the quads' baked UVs point
@@ -253,8 +257,9 @@ public class SensorRenderer implements SpecialModelRenderer<SensorItemModel.Snap
             // a face looking straight at the viewer (a flat item's front) is lit in full; the
             // three faces of a block's isometric icon get the inventory look: top, left, right
             float shade = n.z() >= 0.9f || n.y() > 0.5f ? 1.0f : n.x() < 0f ? 0.8f : 0.6f;
-            int tint = quad.isTinted() && quad.tintIndex() < layer.tintLayers.length
-                    ? layer.tintLayers[quad.tintIndex()] : -1;
+            var material = quad.materialInfo();
+            int tint = material.isTinted() && material.tintIndex() < layer.tintLayers().size()
+                    ? layer.tintLayers().getInt(material.tintIndex()) : -1;
             float r = (tint >> 16 & 255) / 255f * shade;
             float g = (tint >> 8 & 255) / 255f * shade;
             float b = (tint & 255) / 255f * shade;
@@ -287,7 +292,7 @@ public class SensorRenderer implements SpecialModelRenderer<SensorItemModel.Snap
                 double phase = Math.floorMod(now, EMPTY_MS) / (double) EMPTY_MS;
                 float a = (float) (EMPTY_ALPHA_LOW
                         + EMPTY_ALPHA_SWING * (0.5 + 0.5 * Math.sin(2.0 * Math.PI * phase)));
-                drawLayer(pose, vc, models.get(SensorClient.EMPTY), 1f, 1f, 1f, a, LightTexture.FULL_BRIGHT, overlay);
+                drawLayer(pose, vc, models.get(SensorClient.EMPTY), 1f, 1f, 1f, a, LightCoordsUtil.FULL_BRIGHT, overlay);
             }
             case DORMANT, SEARCHING, LOCKED -> {
                 int max = OreSensorItem.MAX_CHARGES;
@@ -298,7 +303,7 @@ public class SensorRenderer implements SpecialModelRenderer<SensorItemModel.Snap
                         + CHARGE_BRIGHTNESS_SWING * (0.5 + 0.5 * Math.sin(2.0 * Math.PI * phase)));
                 for (int i = 0; i < lit; i++) {
                     drawLayer(pose, vc, models.get(SensorClient.charge(i)),
-                            brightness, brightness, brightness, 1f, LightTexture.FULL_BRIGHT, overlay);
+                            brightness, brightness, brightness, 1f, LightCoordsUtil.FULL_BRIGHT, overlay);
                 }
             }
         }
@@ -318,8 +323,15 @@ public class SensorRenderer implements SpecialModelRenderer<SensorItemModel.Snap
     private static void drawLayer(PoseStack ps, VertexConsumer vc, List<BakedQuad> model,
                                   float r, float g, float b, float a, int light, int overlay) {
         PoseStack.Pose pose = ps.last();
-        float[] bright = {1f, 1f, 1f, 1f};
-        int[] lights = {light, light, light, light};
-        for (BakedQuad q : model) vc.putBulkData(pose, q, bright, r, g, b, a, lights, overlay);
+        for (BakedQuad quad : model) {
+            Direction face = quad.direction();
+            for (int i = 0; i < 4; i++) {
+                long uv = quad.packedUV(i);
+                vc.addVertex(pose, quad.position(i)).setColor(r, g, b, a)
+                        .setUv(UVPair.unpackU(uv), UVPair.unpackV(uv))
+                        .setOverlay(overlay).setLight(light)
+                        .setNormal(pose, face.getStepX(), face.getStepY(), face.getStepZ());
+            }
+        }
     }
 }
