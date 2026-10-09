@@ -36,7 +36,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Consumer;
 
 public class OreSensorItem extends Item {
     public static final String SAMPLE_TAG = "Sample";
@@ -671,14 +670,4 @@ public class OreSensorItem extends Item {
         return oldStack.getItem() != newStack.getItem();
     }
 
-    /** Hands rendering to our own renderer so the sample ore can sit on the dial. */
-    @Override
-    public void initializeClient(Consumer<net.minecraftforge.client.extensions.common.IClientItemExtensions> consumer) {
-        consumer.accept(new net.minecraftforge.client.extensions.common.IClientItemExtensions() {
-            @Override
-            public net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer getCustomRenderer() {
-                return com.spysyweeb.oresense.client.SensorRenderer.get();
-            }
-        });
-    }
 }

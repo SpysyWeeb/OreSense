@@ -2,6 +2,9 @@
 
 ## 1.0.2 — 2026-10-09
 
+- Added Minecraft 1.21.1 support for NeoForge 21.1.257 with Java 21.
+- Adapted NeoForge registration, networking, rendering, and common ore/ingredient tags while preserving sensor behavior and artwork.
+
 - Added Minecraft 1.21.1 support for Forge 52.1.0 with Java 21.
 - Updated rendering and data-pack paths for Minecraft 1.21.1 while preserving the animated dial and saved sensors.
 

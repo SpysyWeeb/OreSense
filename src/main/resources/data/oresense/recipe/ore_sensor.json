@@ -3,9 +3,9 @@
   "category": "equipment",
   "pattern": [ "GAG", "AIA", "GAG" ],
   "key": {
-    "G": { "tag": "forge:ingots/gold" },
+    "G": { "tag": "c:ingots/gold" },
     "A": { "item": "minecraft:amethyst_shard" },
-    "I": { "tag": "forge:ingots/iron" }
+    "I": { "tag": "c:ingots/iron" }
   },
   "result": { "id": "oresense:ore_sensor" }
 }

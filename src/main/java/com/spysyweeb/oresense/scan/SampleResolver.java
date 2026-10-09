@@ -17,8 +17,8 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.Tags;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.common.Tags;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 import java.util.*;
 
@@ -91,7 +91,7 @@ public final class SampleResolver {
         byProduct(level).forEach((item, ores) -> {
             if (!ores.isEmpty() && item != Items.AIR) items.add(item);   // air: an ore with no item
         });
-        for (Item item : ForgeRegistries.ITEMS) {
+        for (Item item : BuiltInRegistries.ITEM) {
             if (item instanceof BlockItem blockItem
                     && blockItem.getBlock().defaultBlockState().is(Tags.Blocks.ORES)) items.add(item);
         }
@@ -110,7 +110,7 @@ public final class SampleResolver {
                 .withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(BlockPos.ZERO))
                 .withParameter(LootContextParams.TOOL, new ItemStack(Items.NETHERITE_PICKAXE));
 
-        for (Block block : ForgeRegistries.BLOCKS) {
+        for (Block block : BuiltInRegistries.BLOCK) {
             BlockState state = block.defaultBlockState();
             if (!state.is(Tags.Blocks.ORES)) continue;
             map.computeIfAbsent(block.asItem(), k -> new HashSet<>()).add(block);
