@@ -30,7 +30,6 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
-import net.minecraftforge.network.NetworkHooks;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -262,7 +261,7 @@ public class OreSensorItem extends Item {
             return InteractionResultHolder.sidedSuccess(sensor, level.isClientSide());
         }
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
-            NetworkHooks.openScreen(serverPlayer,
+            serverPlayer.openMenu(
                     new SimpleMenuProvider(
                             (id, inv, p) -> new OreSensorMenu(id, inv, hand),
                             Component.translatable("container.oresense.ore_sensor")),

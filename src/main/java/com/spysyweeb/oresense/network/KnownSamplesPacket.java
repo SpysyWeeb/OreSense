@@ -4,12 +4,11 @@ import com.spysyweeb.oresense.scan.KnownSamples;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraftforge.event.network.CustomPayloadEvent;
 import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.HashSet;
 import java.util.Set;
-import java.util.function.Supplier;
 
 /** Server to client: the items the sample slot accepts, and whether any block goes too. */
 public record KnownSamplesPacket(Set<Item> items, boolean anyBlock) {
@@ -36,7 +35,7 @@ public record KnownSamplesPacket(Set<Item> items, boolean anyBlock) {
      * Runs on the client's main thread: consumerMainThread queues it there and marks the
      * packet handled itself (SimpleChannel.MessageBuilder), so this only stores the list.
      */
-    public static void handle(KnownSamplesPacket packet, Supplier<NetworkEvent.Context> ctx) {
+    public static void handle(KnownSamplesPacket packet, CustomPayloadEvent.Context ctx) {
         KnownSamples.set(packet.items, packet.anyBlock);
     }
 }

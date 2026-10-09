@@ -2,6 +2,7 @@
 
 ## 1.0.2 — 2026-10-09
 
+- Added support for Minecraft 1.20.4 with Forge 49.2.0.
 - Renamed the sensor menu's Ore slot to Sample to reflect that it also accepts ore drops and items made
   from them.
 - Updated the empty sensor tooltip and instructions to use the same sample terminology.
