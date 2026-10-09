@@ -1,6 +1,6 @@
 # OreSense
 
-A prospecting sensor for Minecraft Forge 1.21.4. Tune it with an ore, with what the ore drops, or with
+A prospecting sensor for Minecraft NeoForge 1.21.4. Tune it with an ore, with what the ore drops, or with
 something made from it, load it with amethyst shards, and follow the needle to the vein.
 
 OreSense adds one item, the **Ore Sensor**. It is a compass-style dial with a red needle, two indicator
@@ -35,12 +35,12 @@ amethyst shard iron ingot       amethyst shard
 gold ingot     amethyst shard   gold ingot
 ```
 
-Gold and iron accept any `forge:ingots/gold` and `forge:ingots/iron` item. The recipe unlocks in the recipe
+Gold and iron accept any `c:ingots/gold` and `c:ingots/iron` item. The recipe unlocks in the recipe
 book when you pick up an amethyst shard.
 
 ## What it can find
 
-- Any block in the `forge:ores` tag, from vanilla or any mod.
+- Any block in the `c:ores` tag, from vanilla or any mod.
 - Whatever those blocks drop, and anything made purely from those drops by smelting, blasting, or crafting
   with a single ingredient (ingots, nuggets, storage blocks, raw ore blocks, cut copper, and so on).
   Recipes that mix materials, such as tools or golden apples, are not followed.
@@ -83,7 +83,7 @@ The mapping is rebuilt from the server's loot tables and recipes on every data p
 
 ## Requirements
 
-Minecraft 1.21.4 with Forge 54.1.14 or newer within the 54.x series, and Java 21. The mod must be installed on both the client and the server: the
+Minecraft 1.21.4 with NeoForge 21.4.158 or newer within the 21.4.x series, and Java 21. The mod must be installed on both the client and the server: the
 scanning, locking, and charge logic runs on the server, and the sensor's screen uses a networked menu.
 A client with OreSense will not connect to a server without it, and the other way round.
 
