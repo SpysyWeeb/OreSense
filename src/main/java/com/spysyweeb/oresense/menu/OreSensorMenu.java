@@ -3,6 +3,8 @@ package com.spysyweeb.oresense.menu;
 import com.spysyweeb.oresense.OreSense;
 import com.spysyweeb.oresense.OreSensorItem;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraft.tags.ItemTags;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
@@ -13,9 +15,10 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.InteractionHand;
-import net.minecraftforge.common.Tags;
 
 public class OreSensorMenu extends AbstractContainerMenu {
+    // Forge 38 does not supply this tag; our data pack supplies the vanilla shard entry.
+    private static final ResourceLocation AMETHYST_TAG = new ResourceLocation("forge", "gems/amethyst");
     /**
      * Menu slots: the sample, the charges, then inventory 9..35 and hotbar 0..8. On screen the
      * charges sit on the left and the sample on the right, each with a label (OreSensorScreen);
@@ -72,7 +75,7 @@ public class OreSensorMenu extends AbstractContainerMenu {
     }
 
     private static boolean isCharge(ItemStack stack) {
-        return stack.is(Tags.Items.GEMS_AMETHYST);
+        return stack.is(ItemTags.getAllTags().getTagOrEmpty(AMETHYST_TAG));
     }
 
     private void save() {

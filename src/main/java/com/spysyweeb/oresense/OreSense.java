@@ -14,7 +14,7 @@ import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.extensions.IForgeMenuType;
 import net.minecraftforge.event.AddReloadListenerEvent;
 import net.minecraftforge.event.OnDatapackSyncEvent;
-import net.minecraftforge.event.level.BlockEvent;
+import net.minecraftforge.event.world.BlockEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
@@ -30,7 +30,7 @@ public class OreSense {
     public static final DeferredRegister<Item> ITEMS =
             DeferredRegister.create(ForgeRegistries.ITEMS, MODID);
     public static final DeferredRegister<MenuType<?>> MENUS =
-            DeferredRegister.create(ForgeRegistries.MENU_TYPES, MODID);
+            DeferredRegister.create(ForgeRegistries.CONTAINERS, MODID);
 
     public static final RegistryObject<Item> ORE_SENSOR =
             ITEMS.register("ore_sensor", () -> new OreSensorItem(
@@ -74,8 +74,8 @@ public class OreSense {
      * locked sensor someone put in its inventory.
      */
     private void spendCharge(BlockEvent.BreakEvent event) {
-        if (event.getLevel().isClientSide()) return;
-        if (!(event.getPlayer() instanceof ServerPlayer player) || !(event.getLevel() instanceof Level level)) return;
+        if (event.getWorld().isClientSide()) return;
+        if (!(event.getPlayer() instanceof ServerPlayer player) || !(event.getWorld() instanceof Level level)) return;
         OreSensorItem.onBlockBroken(player, level, event.getPos());
     }
 

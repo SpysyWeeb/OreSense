@@ -13,6 +13,7 @@ import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -40,7 +41,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 public class OreSensorItem extends Item {
-    // 1.19.1 has no amethyst resonance asset. Use its chime and compensate for the
+    // 1.18 has no amethyst resonance asset. Use its chime and compensate for the
     // 0.2 volume in vanilla's sounds.json so lock/release keep their intended loudness.
     private static final float AMETHYST_CHIME_VOLUME_SCALE = 5.0f;
 
@@ -266,10 +267,10 @@ public class OreSensorItem extends Item {
             return InteractionResultHolder.sidedSuccess(sensor, level.isClientSide());
         }
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
-            NetworkHooks.openScreen(serverPlayer,
+            NetworkHooks.openGui(serverPlayer,
                     new SimpleMenuProvider(
                             (id, inv, p) -> new OreSensorMenu(id, inv, hand),
-                            Component.translatable("container.oresense.ore_sensor")),
+                            new TranslatableComponent("container.oresense.ore_sensor")),
                     buf -> buf.writeEnum(hand));
         }
         return InteractionResultHolder.sidedSuccess(sensor, level.isClientSide());
@@ -508,7 +509,7 @@ public class OreSensorItem extends Item {
         BlockPos best = blocks.get(0);
         double bestSq = Double.MAX_VALUE;
         for (BlockPos pos : blocks) {
-            double dSq = pos.distToCenterSqr(center.getX() + 0.5, center.getY() + 0.5, center.getZ() + 0.5);
+            double dSq = pos.distSqr(center.getX() + 0.5, center.getY() + 0.5, center.getZ() + 0.5, true);
             if (dSq < bestSq) {
                 bestSq = dSq;
                 best = pos;
@@ -518,7 +519,7 @@ public class OreSensorItem extends Item {
     }
 
     private static double distance(BlockPos center, BlockPos pos) {
-        return Math.sqrt(pos.distToCenterSqr(center.getX() + 0.5, center.getY() + 0.5, center.getZ() + 0.5));
+        return Math.sqrt(pos.distSqr(center.getX() + 0.5, center.getY() + 0.5, center.getZ() + 0.5, true));
     }
 
     /** Inside the box a scan covers around the player's feet block. */
@@ -626,16 +627,16 @@ public class OreSensorItem extends Item {
     private static void showReading(ServerPlayer player, BlockPos center, BlockPos target, double distance,
                                     int range, int count) {
         if (!Config.INSTANCE.showActionBar.get()) return;
-        Component strength = Component.translatable(Signal.strength(distance, range));
+        Component strength = new TranslatableComponent(Signal.strength(distance, range));
         Component line;
         if (Config.INSTANCE.showDirection.get()) {
-            line = Component.translatable("oresense.msg.reading_dir",
+            line = new TranslatableComponent("oresense.msg.reading_dir",
                     strength,
-                    Component.translatable(Signal.compass(center, target)),
-                    Component.translatable(Signal.vertical(center, target)),
+                    new TranslatableComponent(Signal.compass(center, target)),
+                    new TranslatableComponent(Signal.vertical(center, target)),
                     count);
         } else {
-            line = Component.translatable("oresense.msg.reading", strength, count);
+            line = new TranslatableComponent("oresense.msg.reading", strength, count);
         }
         player.displayClientMessage(line.copy().withStyle(ChatFormatting.AQUA), true);
     }
@@ -644,13 +645,13 @@ public class OreSensorItem extends Item {
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
         ItemStack sample = getSample(stack);
         tooltip.add(sample.isEmpty()
-                ? Component.translatable("oresense.tooltip.empty").withStyle(ChatFormatting.DARK_GRAY)
-                : Component.translatable("oresense.tooltip.tuned", sample.getHoverName()).withStyle(ChatFormatting.AQUA));
+                ? new TranslatableComponent("oresense.tooltip.empty").withStyle(ChatFormatting.DARK_GRAY)
+                : new TranslatableComponent("oresense.tooltip.tuned", sample.getHoverName()).withStyle(ChatFormatting.AQUA));
         int charges = getCharges(stack);
         tooltip.add(charges > 0
-                ? Component.translatable("oresense.tooltip.charges", charges, MAX_CHARGES).withStyle(ChatFormatting.LIGHT_PURPLE)
-                : Component.translatable("oresense.tooltip.no_charge").withStyle(ChatFormatting.RED));
-        tooltip.add(Component.translatable("oresense.tooltip.usage").withStyle(ChatFormatting.DARK_GRAY));
+                ? new TranslatableComponent("oresense.tooltip.charges", charges, MAX_CHARGES).withStyle(ChatFormatting.LIGHT_PURPLE)
+                : new TranslatableComponent("oresense.tooltip.no_charge").withStyle(ChatFormatting.RED));
+        tooltip.add(new TranslatableComponent("oresense.tooltip.usage").withStyle(ChatFormatting.DARK_GRAY));
     }
 
     @Override
@@ -669,10 +670,10 @@ public class OreSensorItem extends Item {
 
     /** Hands rendering to our own renderer so the sample ore can sit on the dial. */
     @Override
-    public void initializeClient(Consumer<net.minecraftforge.client.extensions.common.IClientItemExtensions> consumer) {
-        consumer.accept(new net.minecraftforge.client.extensions.common.IClientItemExtensions() {
+    public void initializeClient(Consumer<net.minecraftforge.client.IItemRenderProperties> consumer) {
+        consumer.accept(new net.minecraftforge.client.IItemRenderProperties() {
             @Override
-            public net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer getCustomRenderer() {
+            public net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer getItemStackRenderer() {
                 return com.spysyweeb.oresense.client.SensorRenderer.get();
             }
         });

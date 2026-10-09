@@ -14,7 +14,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.util.Mth;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ModelEvent;
+import net.minecraftforge.client.event.ModelRegistryEvent;
+import net.minecraftforge.client.model.ForgeModelBakery;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
@@ -96,15 +97,15 @@ public class SensorClient {
     }
 
     @SubscribeEvent
-    public static void registerModels(ModelEvent.RegisterAdditional event) {
-        event.register(BASE);
-        event.register(LAMP_UP);
-        event.register(LAMP_DOWN);
-        event.register(EMPTY);
-        for (ModelResourceLocation frame : NEEDLE) event.register(frame);
-        for (ModelResourceLocation frame : TAIL) event.register(frame);
-        for (ModelResourceLocation ring : SONAR) event.register(ring);
-        for (ModelResourceLocation cell : CHARGE) event.register(cell);
+    public static void registerModels(ModelRegistryEvent event) {
+        ForgeModelBakery.addSpecialModel(BASE);
+        ForgeModelBakery.addSpecialModel(LAMP_UP);
+        ForgeModelBakery.addSpecialModel(LAMP_DOWN);
+        ForgeModelBakery.addSpecialModel(EMPTY);
+        for (ModelResourceLocation frame : NEEDLE) ForgeModelBakery.addSpecialModel(frame);
+        for (ModelResourceLocation frame : TAIL) ForgeModelBakery.addSpecialModel(frame);
+        for (ModelResourceLocation ring : SONAR) ForgeModelBakery.addSpecialModel(ring);
+        for (ModelResourceLocation cell : CHARGE) ForgeModelBakery.addSpecialModel(cell);
     }
 
     @SubscribeEvent
@@ -153,7 +154,7 @@ public class SensorClient {
 
             double dx = (target.getX() + 0.5) - player.getX();
             double dz = (target.getZ() + 0.5) - player.getZ();
-            double facing = Math.toRadians(player.getViewYRot(mc.getPartialTick()) + 90.0);
+            double facing = Math.toRadians(player.getViewYRot(mc.getFrameTime()) + 90.0);
             want = wrap((Math.atan2(dz, dx) - facing) / (Math.PI * 2.0));
 
             int sign = Signal.verticalSign(target.getY() - player.blockPosition().getY());
@@ -176,7 +177,7 @@ public class SensorClient {
         if (state != State.DORMANT) {
             // the shortest way from the last step's start to its end (the step is |delta| < 0.5)
             double step = wrap(rotation - prevRotation + 0.5) - 0.5;
-            angle = (float) wrap(prevRotation + mc.getPartialTick() * step);
+            angle = (float) wrap(prevRotation + mc.getFrameTime() * step);
         }
         return new Reading(state, angle, vertical, sample, lost, paid, closeness, charges);
     }
