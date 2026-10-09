@@ -13,7 +13,7 @@ lamps for ore above or below you, a charge gauge, and a window that shows what y
    or nugget finds iron ore, cut copper finds copper ore, netherite scrap finds ancient debris, an amethyst
    shard finds geodes. Only things the sensor can actually find are accepted.
 2. **Charge it.** Put amethyst shards in the **Shards** slot, up to 64. The gauge under the window shows
-   the charge in four cells of 16 shards.
+   the charge in four cells of 16 shards with a subtle brightness pulse, even when the Ore slot is empty.
 3. **Hold it.** While held, the sensor scans around you. When it finds a matching vein it locks on with a
    chime: the needle turns red and pulses toward the nearest block of the vein, faster the closer you get.
    The top lamp lights when the vein is above you, the bottom lamp when it is below. Level with you, both

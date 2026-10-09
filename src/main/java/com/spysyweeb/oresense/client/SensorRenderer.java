@@ -38,6 +38,9 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
     private static final double PULSE_FAR_MS = 1050.0;
     private static final long SONAR_MS = 1600L;   // one sweep of all the rings
     private static final long EMPTY_MS = 1400L;   // NO_CHARGE: the red gauge's slow pulse
+    private static final long CHARGE_PULSE_MS = 2800L;
+    private static final float CHARGE_BRIGHTNESS_LOW = 0.75f;
+    private static final float CHARGE_BRIGHTNESS_SWING = 0.25f;
 
     // NO_CHARGE alpha of the red gauge row swings from EMPTY_ALPHA_LOW to EMPTY_ALPHA_LOW + EMPTY_ALPHA_SWING
     private static final float EMPTY_ALPHA_LOW = 0.35f;
@@ -117,7 +120,7 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
 
         // the gauge before the needle: a needle pointing down crosses the gauge row under the
         // window and must stay one unbroken stroke over it
-        drawGauge(pose, vc, models, reading, now, light, overlay);
+        drawGauge(pose, vc, models, reading, now, overlay);
 
         // the frame nearest the spring's angle: frame i points 11.25 degrees * i clockwise from up,
         // the same sense as the angle (positive = the target is to the player's right)
@@ -277,28 +280,31 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
 
     /**
      * The charge gauge, the row of four cells under the window. The base holds all four unlit
-     * (dark amethyst), so only lit cells are drawn. SEARCHING / LOCKED: ceil(charges * 4 / 64)
-     * cells lit from the left end, 16 shards each, untinted and world-lit like the dial; one
-     * shard already lights a cell, so an unlit gauge always means empty. NO_CHARGE: the red row
-     * in a slow pulse, glowing (the server found ore but the sensor has no amethyst to lock
-     * with). DORMANT draws nothing, leaving the base's dark cells.
+     * (dark amethyst), so only lit cells are drawn. Stored charge is shown even when dormant
+     * or without a sample: ceil(charges * 4 / 64) cells lit from the left end, 16 shards each,
+     * with the filled pixels gently pulsing between 75% and full brightness.
+     * One shard already lights a cell, so an unlit gauge always means empty. NO_CHARGE shows the
+     * red row in a slow pulse (the server found ore but the sensor has no amethyst to lock with).
      */
     private static void drawGauge(PoseStack pose, VertexConsumer vc, ModelManager models,
-                                  SensorClient.Reading reading, long now, int light, int overlay) {
+                                  SensorClient.Reading reading, long now, int overlay) {
         switch (reading.state()) {
-            case DORMANT -> { }
             case NO_CHARGE -> {
                 double phase = Math.floorMod(now, EMPTY_MS) / (double) EMPTY_MS;
                 float a = (float) (EMPTY_ALPHA_LOW
                         + EMPTY_ALPHA_SWING * (0.5 + 0.5 * Math.sin(2.0 * Math.PI * phase)));
                 drawLayer(pose, vc, models.getModel(SensorClient.EMPTY), 1f, 1f, 1f, a, LightTexture.FULL_BRIGHT, overlay);
             }
-            case SEARCHING, LOCKED -> {
+            case DORMANT, SEARCHING, LOCKED -> {
                 int max = OreSensorItem.MAX_CHARGES;
                 int cells = SensorClient.CHARGE_CELLS;
                 int lit = (Mth.clamp(reading.charges(), 0, max) * cells + max - 1) / max;
+                double phase = Math.floorMod(now, CHARGE_PULSE_MS) / (double) CHARGE_PULSE_MS;
+                float brightness = (float) (CHARGE_BRIGHTNESS_LOW
+                        + CHARGE_BRIGHTNESS_SWING * (0.5 + 0.5 * Math.sin(2.0 * Math.PI * phase)));
                 for (int i = 0; i < lit; i++) {
-                    drawLayer(pose, vc, models.getModel(SensorClient.charge(i)), 1f, 1f, 1f, 1f, light, overlay);
+                    drawLayer(pose, vc, models.getModel(SensorClient.charge(i)),
+                            brightness, brightness, brightness, 1f, LightTexture.FULL_BRIGHT, overlay);
                 }
             }
         }

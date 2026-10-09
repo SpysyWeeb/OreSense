@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1 — Unreleased
+
+- The charge gauge now shows stored amethyst even when the ore sample slot is empty or the sensor is
+  dormant. Adding or removing a sample no longer hides the charge level.
+- Filled charge pixels pulse slowly between 75% and full brightness.
+
 ## 1.0.0 — 2026-09-24
 
 First release.

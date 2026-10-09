@@ -18,7 +18,8 @@ base -> sonar ring -> charge gauge -> needle tail -> needle tip -> lit lamp -> s
                              tints it (red and pulsing when locked, grey at rest)
   ore_sensor_tail_00..31     white 1-px tail opposite frame i, just outside the window
   ore_sensor_lamp_up/down    the lit lamp, red: 12 o'clock = ore above, 6 o'clock = below
-  ore_sensor_charge_00..03   one lit gauge cell each (amethyst lilac), left to right
+  ore_sensor_charge_00..03   one lit gauge cell each (amethyst lilac), left to right;
+                             full bright with a slow 2.8 s brightness pulse (0.75 .. 1.00)
   ore_sensor_empty           the four gauge cells in red: NO_CHARGE, drawn with a pulsing alpha
   ore_sensor_sonar_00..02    cyan 1-px ring on the face, radius ~3.5 / ~4.5 / ~5.5
 
@@ -35,17 +36,18 @@ nothing stale reaches the jar, writes textures/gui/ore_sensor.png (the sensor sc
 GUI section) and a 12x preview (default build/dial_preview.png) with the runtime tints applied.
 
 Preview, one row each (12x, every texel a 12 px block, on the inventory slot grey):
-  1  DORMANT      grey needle at rest
+  1  DORMANT      grey needle at rest, no sample, with 0, 1, 17, 33 and 49 shards
   2  SEARCHING    sonar ring 0, 1, 2 at the start of its third of the sweep, gauge 3 of 4
   3  LOCKED       needle frame 5: pulse high + top lamp, pulse high + bottom lamp, lost
                   (steady dim tip), pulse low
   4  NO_CHARGE    the red row at the pulse's high and low alpha
   5, 6            all 32 needle frames (red tip at pulse high + light tail), 16 per row
   7  GAUGE        1, 2, 3, 4 cells lit
-  8  HOTBAR       DORMANT, SEARCHING ring 0, LOCKED top lamp, NO_CHARGE high in the first
+  8  CHARGE PULSE no sample, 40 shards: brightness pulse low and high (all other rows at high)
+  9  HOTBAR       DORMANT, SEARCHING ring 0, LOCKED top lamp, NO_CHARGE high in the first
                   four slots of the vanilla hotbar (gui/widgets.png) at GUI scale 2, as the
                   concept sheet does, then the same strip blown up 4x to inspect
-Rows 2-4, 7 and 8 put a 4x4 diamond in the window as a stand-in for the sample item (the
+Rows 2-4, 7 and 9 put a 4x4 diamond in the window as a stand-in for the sample item (the
 renderer draws the real item there).
 """
 
@@ -212,6 +214,7 @@ LOCK_TIP = (0.93, 0.14, 0.10)          # times the pulse b
 LOCK_TAIL = (0.85, 0.85, 0.85)
 LOST_TIP = (0.5, 0.08, 0.06)           # locked vein out of range: steady dim red
 PULSE_LOW = 0.55                       # b swings 0.55 .. 1.0
+CHARGE_PULSE_LOW = 0.75                # full-bright cells: 2.8 s sine pulse up to 1.0
 PLAIN = (1.0, 1.0, 1.0)
 EMPTY_ALPHA = (0.35, 1.0)              # NO_CHARGE row: low, high
 SONAR_ALPHA = (0.85, 0.30)             # current ring, previous ring; both times (1 - phase)
@@ -681,14 +684,14 @@ def lit_cells(charges):
     return -(-max(0, min(charges, MAX_CHARGES)) * len(GAUGE) // MAX_CHARGES)
 
 
-def gauge(dial, charges):
+def gauge(dial, charges, brightness=1.0):
     for i in range(lit_cells(charges)):
-        dial.draw(charge(i))
+        dial.draw(charge(i), (brightness,) * 3)
     return dial
 
 
-def dormant(layers):
-    return rest_needle(Dial(layers))
+def dormant(layers, charges=0, charge_brightness=1.0):
+    return rest_needle(gauge(Dial(layers), charges, charge_brightness))
 
 
 def searching(layers, pal, ring, charges=40):
@@ -753,7 +756,8 @@ def preview_rows(layers, pal):
     zoom = hotbar.resize((hotbar.width * HOTBAR_ZOOM, hotbar.height * HOTBAR_ZOOM), Image.NEAREST)
     half = NEEDLE_FRAMES // 2
     return [
-        ("DORMANT", [enlarged(dormant(layers).image())]),
+        ("DORMANT, no sample:\n0, 1, 17, 33, 49 shards", [
+            enlarged(dormant(layers, charges).image()) for charges in (0, 1, 17, 33, 49)]),
         ("SEARCHING:\nring 0, 1, 2", [enlarged(searching(layers, pal, k).image()) for k in range(len(SONAR))]),
         ("LOCKED frame 5:\nup lamp, down lamp,\nlost, pulse low", [
             enlarged(locked(layers, pal, LOCKED_FRAME, "up").image()),
@@ -764,6 +768,8 @@ def preview_rows(layers, pal):
         ("needle 00-15", [enlarged(needle_doc(layers, i).image()) for i in range(half)]),
         ("needle 16-31", [enlarged(needle_doc(layers, i).image()) for i in range(half, NEEDLE_FRAMES)]),
         ("GAUGE: 1-4 cells", [enlarged(gauge_only(layers, pal, n).image()) for n in range(1, len(GAUGE) + 1)]),
+        ("CHARGE PULSE:\nno sample, 40 shards\npulse low, high", [
+            enlarged(dormant(layers, 40, b).image()) for b in (CHARGE_PULSE_LOW, 1.0)]),
         ("HOTBAR, GUI scale 2\n(then 4x)", [hotbar, zoom]),
     ]
 
