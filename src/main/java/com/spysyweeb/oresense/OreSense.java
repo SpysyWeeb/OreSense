@@ -85,14 +85,18 @@ public class OreSense {
      * client too instead of snapping back. Forge fires this for one player as they join
      * (PlayerList.placeNewPlayer, before they can open anything) and for everyone after a
      * /reload has swapped in and re-tagged the new data (PlayerList.reloadResources); in both
-     * cases getPlayers() is the right list. The first join after start builds the resolver's
+     * cases the event player or the full player list identifies the recipients. The first join after start builds the resolver's
      * map on the server thread, which the first scan used to do.
      */
     private void syncSamples(OnDatapackSyncEvent event) {
         KnownSamplesPacket packet = new KnownSamplesPacket(
                 SampleResolver.knownSamples(event.getPlayerList().getServer().overworld()),
                 !Config.INSTANCE.oresOnly.get());
-        for (ServerPlayer player : event.getPlayers()) {
+        if (event.getPlayer() != null) {
+            OreSenseNetwork.send(event.getPlayer(), packet);
+            return;
+        }
+        for (ServerPlayer player : event.getPlayerList().getPlayers()) {
             OreSenseNetwork.send(player, packet);
         }
     }
