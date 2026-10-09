@@ -32,11 +32,10 @@ public record KnownSamplesPacket(Set<Item> items, boolean anyBlock) {
         return new KnownSamplesPacket(items, anyBlock);
     }
 
-    /**
-     * Runs on the client's main thread: consumerMainThread queues it there and marks the
-     * packet handled itself (SimpleChannel.MessageBuilder), so this only stores the list.
-     */
+    /** Queues the sample update on the client's main thread before marking the packet handled. */
     public static void handle(KnownSamplesPacket packet, Supplier<NetworkEvent.Context> ctx) {
-        KnownSamples.set(packet.items, packet.anyBlock);
+        NetworkEvent.Context context = ctx.get();
+        context.enqueueWork(() -> KnownSamples.set(packet.items, packet.anyBlock));
+        context.setPacketHandled(true);
     }
 }

@@ -1,6 +1,7 @@
 package com.spysyweeb.oresense.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
 import com.mojang.math.Matrix3f;
 import com.mojang.math.Matrix4f;
 import com.mojang.math.Vector3f;
@@ -20,19 +21,23 @@ import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.client.resources.model.ModelManager;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
-import net.minecraft.util.RandomSource;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraftforge.client.model.IQuadTransformer;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 /**
  * Draws the 16x16 dial as stacked layers (base, sonar ring, charge gauge, needle tail and tip, lit
  * lamp), then the sample sitting in the window at the centre so you can see what it is hunting for.
  */
 public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
+    private static final int VERTEX_STRIDE = DefaultVertexFormat.BLOCK.getIntegerSize();
+    private static final int POSITION_OFFSET = DefaultVertexFormat.BLOCK.getOffset(0) / Integer.BYTES;
+    private static final int COLOR_OFFSET = DefaultVertexFormat.BLOCK.getOffset(1) / Integer.BYTES;
+    private static final int UV_OFFSET = DefaultVertexFormat.BLOCK.getOffset(2) / Integer.BYTES;
+
     // locked needle glow: one pulse per PULSE_NEAR_MS on the target, PULSE_NEAR_MS + PULSE_FAR_MS
     // at the edge of the scan range, linear in between
     private static final double PULSE_NEAR_MS = 350.0;
@@ -234,7 +239,7 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
 
         // the same quad lists, in the same order and with the same seed, as renderModelLists
         List<BakedQuad> quads = new ArrayList<>();
-        RandomSource rand = RandomSource.create();
+        Random rand = new Random();
         for (Direction side : Direction.values()) {
             rand.setSeed(42L);
             quads.addAll(model.getQuads(null, side, rand));
@@ -262,20 +267,20 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
             float g = (tint >> 8 & 255) / 255f * shade;
             float b = (tint & 255) / 255f * shade;
 
-            // vertex data is DefaultVertexFormat.BLOCK; IQuadTransformer holds its int offsets
+            // Vertex data uses DefaultVertexFormat.BLOCK; offsets above are measured in ints.
             int[] v = quad.getVertices();
-            for (int o = 0; o < v.length; o += IQuadTransformer.STRIDE) {
+            for (int o = 0; o < v.length; o += VERTEX_STRIDE) {
                 // w=1 keeps the model's GUI translation; this is a position, not a direction.
                 p.set(
-                        Float.intBitsToFloat(v[o + IQuadTransformer.POSITION]) - 0.5f,
-                        Float.intBitsToFloat(v[o + IQuadTransformer.POSITION + 1]) - 0.5f,
-                        Float.intBitsToFloat(v[o + IQuadTransformer.POSITION + 2]) - 0.5f, 1f);
+                        Float.intBitsToFloat(v[o + POSITION_OFFSET]) - 0.5f,
+                        Float.intBitsToFloat(v[o + POSITION_OFFSET + 1]) - 0.5f,
+                        Float.intBitsToFloat(v[o + POSITION_OFFSET + 2]) - 0.5f, 1f);
                 p.transform(place);
-                int c = v[o + IQuadTransformer.COLOR];  // R,G,B,A bytes, R in the low byte
+                int c = v[o + COLOR_OFFSET];  // R,G,B,A bytes, R in the low byte
                 vc.vertex(dial.pose(), p.x(), p.y(), p.z() * DECAL_DEPTH)  // pressed onto the socket
                         .color(r * (c & 255) / 255f, g * (c >> 8 & 255) / 255f, b * (c >> 16 & 255) / 255f, 1f)
-                        .uv(Float.intBitsToFloat(v[o + IQuadTransformer.UV0]),
-                            Float.intBitsToFloat(v[o + IQuadTransformer.UV0 + 1]))
+                        .uv(Float.intBitsToFloat(v[o + UV_OFFSET]),
+                            Float.intBitsToFloat(v[o + UV_OFFSET + 1]))
                         .overlayCoords(overlay)
                         .uv2(light)
                         .normal(dial.normal(), 0f, 0f, 1f)
@@ -330,7 +335,7 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
     private static void drawLayer(PoseStack ps, VertexConsumer vc, BakedModel model,
                                   float r, float g, float b, float a, int light, int overlay) {
         PoseStack.Pose pose = ps.last();
-        RandomSource rand = RandomSource.create(42L);
+        Random rand = new Random(42L);
         float[] bright = {1f, 1f, 1f, 1f};
         int[] lights = {light, light, light, light};
         for (Direction d : Direction.values())
