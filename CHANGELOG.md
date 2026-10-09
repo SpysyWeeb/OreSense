@@ -2,7 +2,7 @@
 
 ## 1.0.1 — 2026-10-08
 
-- Added Minecraft 1.19 support with Fabric Loader and Fabric API.
+- Added Minecraft 1.19.2 support with Fabric Loader and Fabric API.
 - Added Fabric registration, rendering, menus, networking, and configuration.
 - Included all vanilla ores, plus Fabric common and Forge ore/ingredient tag compatibility.
 - Lock and release cues use the amethyst chime available in Minecraft 1.19.
