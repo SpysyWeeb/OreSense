@@ -14,10 +14,10 @@ public class OreSensorScreen extends AbstractContainerScreen<OreSensorMenu> {
     // 256x256 canvas that the short blit form below assumes
     private static final ResourceLocation TEXTURE = ResourceLocation.fromNamespaceAndPath(OreSense.MODID, "textures/gui/ore_sensor.png");
     // each slot's name, left of it in vanilla's label style (AbstractContainerScreen.renderLabels
-    // draws the title and "Inventory" in 0x404040 without a shadow)
+    // draws the title and "Inventory" in 0xFF404040 without a shadow)
     private static final Component CHARGES_LABEL = Component.translatable("oresense.gui.charges");
     private static final Component SAMPLE_LABEL = Component.translatable("oresense.gui.sample");
-    private static final int LABEL_COLOUR = 0x404040;
+    private static final int LABEL_COLOUR = 0xFF404040;
     private static final int LABEL_GAP = 4;       // px from a label's right end to its slot's frame
 
     public OreSensorScreen(OreSensorMenu menu, Inventory inv, Component title) {
@@ -31,7 +31,7 @@ public class OreSensorScreen extends AbstractContainerScreen<OreSensorMenu> {
     protected void renderBg(GuiGraphics g, float partialTick, int mouseX, int mouseY) {
         int x = (width - imageWidth) / 2;
         int y = (height - imageHeight) / 2;
-        g.blit(TEXTURE, x, y, 0, 0, imageWidth, imageHeight);
+        g.blit(net.minecraft.client.renderer.RenderPipelines.GUI_TEXTURED, TEXTURE, x, y, 0, 0, imageWidth, imageHeight, 256, 256);
     }
 
     /** Runs with the pose already moved to the panel's top-left, like the title. */
