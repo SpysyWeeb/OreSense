@@ -9,7 +9,7 @@
   ],
   "contact": {
     "homepage": "https://github.com/SpysyWeeb/OreSense",
-    "sources": "https://github.com/SpysyWeeb/OreSense/tree/Fabric-1.21.1",
+    "sources": "https://github.com/SpysyWeeb/OreSense/tree/Quilt-1.21.1",
     "issues": "https://github.com/SpysyWeeb/OreSense/issues"
   },
   "license": "MIT",
@@ -27,9 +27,10 @@
     "oresense.client.mixins.json"
   ],
   "depends": {
-    "fabricloader": ">=0.19.5",
+    "fabricloader": ">=0.19.3",
     "fabric": ">=0.116.17",
     "minecraft": "1.21.1",
-    "java": ">=21"
+    "java": ">=21",
+    "quilt_loader": ">=0.30.1"
   }
 }
