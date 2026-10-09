@@ -91,7 +91,8 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
     public void renderByItem(ItemStack stack, ItemDisplayContext context, PoseStack pose,
                              MultiBufferSource buffer, int light, int overlay) {
         Minecraft mc = Minecraft.getInstance();
-        ModelManager models = mc.getModelManager();
+        BakedModel sensorModel = mc.getItemRenderer().getModel(stack, mc.level, null, 0);
+        if (!(sensorModel instanceof SensorModel.Baked models)) return;
         SensorClient.Reading reading = SensorClient.read(stack, context);
         long now = Util.getMillis();              // one clock for every sensor on screen
 
@@ -102,8 +103,7 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
         // bit for bit alike: the same depth at every pixel (LEQUAL passes) and the same sort key
         // (BufferBuilder sorts translucent quads by the midpoint of vertices 0 and 2, stable for
         // ties), so each layer lands on top of the one before it.
-        VertexConsumer vc = ItemRenderer.getFoilBufferDirect(buffer,
-                ItemBlockRenderTypes.getRenderType(stack, true), true, false);
+        VertexConsumer vc = buffer.getBuffer(ItemBlockRenderTypes.getRenderType(stack));
 
         drawLayer(pose, vc, models.getModel(SensorClient.BASE), 1f, 1f, 1f, 1f, light, overlay);
 
@@ -243,7 +243,7 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
 
         // a block's own sheet (cutout, or translucent-cull for translucent blocks), on the block
         // atlas, which is where the quads' baked UVs point
-        VertexConsumer vc = buffer.getBuffer(ItemBlockRenderTypes.getRenderType(sample, true));
+        VertexConsumer vc = buffer.getBuffer(ItemBlockRenderTypes.getRenderType(sample));
         PoseStack.Pose dial = ps.last();
         Vector3f n = new Vector3f(), p = new Vector3f();
         for (BakedQuad quad : quads) {
@@ -285,7 +285,7 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
      * One shard already lights a cell, so an unlit gauge always means empty. NO_CHARGE shows the
      * red row in a slow pulse (the server found ore but the sensor has no amethyst to lock with).
      */
-    private static void drawGauge(PoseStack pose, VertexConsumer vc, ModelManager models,
+    private static void drawGauge(PoseStack pose, VertexConsumer vc, SensorModel.Baked models,
                                   SensorClient.Reading reading, long now, int overlay) {
         switch (reading.state()) {
             case NO_CHARGE -> {

@@ -31,7 +31,7 @@ public class OreSensorScreen extends AbstractContainerScreen<OreSensorMenu> {
     protected void renderBg(GuiGraphics g, float partialTick, int mouseX, int mouseY) {
         int x = (width - imageWidth) / 2;
         int y = (height - imageHeight) / 2;
-        g.blit(TEXTURE, x, y, 0, 0, imageWidth, imageHeight);
+        g.blit(net.minecraft.client.renderer.RenderType::guiTextured, TEXTURE, x, y, 0, 0, imageWidth, imageHeight, 256, 256);
     }
 
     /** Runs with the pose already moved to the panel's top-left, like the title. */

@@ -107,5 +107,6 @@
     1
    ]
   }
- }
+ },
+ "loader": "oresense:sensor"
 }

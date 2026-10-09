@@ -19,7 +19,7 @@ import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
-import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.InteractionResult;
 import net.minecraft.world.SimpleMenuProvider;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Inventory;
@@ -248,14 +248,14 @@ public class OreSensorItem extends Item {
      * counts as having found it and spends its charge; otherwise nothing is spent.
      */
     @Override
-    public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
+    public InteractionResult use(Level level, Player player, InteractionHand hand) {
         ItemStack sensor = player.getItemInHand(hand);
         if (!level.isClientSide) SensorData.migrateSample(sensor, level.registryAccess());
         if (player.isSecondaryUseActive() && isLocked(sensor)) {
             if (level instanceof ServerLevel serverLevel && player instanceof ServerPlayer serverPlayer) {
                 releaseByHand(serverLevel, serverPlayer, sensor);
             }
-            return InteractionResultHolder.sidedSuccess(sensor, level.isClientSide());
+            return InteractionResult.SUCCESS;
         }
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
             serverPlayer.openMenu(
@@ -264,7 +264,7 @@ public class OreSensorItem extends Item {
                             Component.translatable("container.oresense.ore_sensor")),
                     buf -> buf.writeEnum(hand));
         }
-        return InteractionResultHolder.sidedSuccess(sensor, level.isClientSide());
+        return InteractionResult.SUCCESS;
     }
 
     private static void releaseByHand(ServerLevel level, ServerPlayer player, ItemStack sensor) {

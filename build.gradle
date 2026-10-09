@@ -9,7 +9,7 @@ version = mod_version
 group = mod_group_id
 
 base {
-    archivesName = "${mod_id}-${minecraft_version}"   // oresense-1.21.1-<version>.jar
+    archivesName = "${mod_id}-${minecraft_version}"   // oresense-1.21.3-<version>.jar
 }
 
 // Minecraft 1.20.5 and newer require Java 21.

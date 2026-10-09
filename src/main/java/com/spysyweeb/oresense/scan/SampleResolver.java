@@ -1,8 +1,12 @@
 package com.spysyweeb.oresense.scan;
 
 import net.minecraft.core.BlockPos;
-import net.minecraft.core.RegistryAccess;
-import net.minecraft.server.ReloadableServerResources;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.minecraft.resources.ResourceLocation;
+import net.minecraftforge.common.Tags;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.server.ReloadableServerRegistries;
+import com.spysyweeb.oresense.OreSense;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.Item;
@@ -10,15 +14,16 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.crafting.Ingredient;
 import net.minecraft.world.item.crafting.Recipe;
+import net.minecraft.world.item.crafting.RecipeHolder;
 import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.RecipeType;
+import net.minecraft.world.item.crafting.display.RecipeDisplay;
+import net.minecraft.world.item.crafting.display.SlotDisplayContext;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.storage.loot.LootParams;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.Tags;
-import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.*;
 
@@ -35,15 +40,12 @@ import java.util.*;
 public final class SampleResolver {
     private static Map<Item, Set<Block>> itemToOres = null;
     /**
-     * The data the map was built from. Loot tables, recipes and tags all live in one
-     * ReloadableServerResources, and /reload swaps in a new one on the server thread (in
-     * MinecraftServer.reloadResources) before it re-tags the registries and resyncs players.
-     * Keying the map on that object means it always matches the data the server is using,
-     * whatever runs while a reload is in flight: a command-started reload waits in
-     * managedBlock, which keeps running queued packets, and a sample-slot click among them
-     * resolves against the old data that is still live at that moment.
+     * /reload replaces both managers when the newly loaded resources become live. Checking
+     * their identities keeps a sample click during an in-flight reload from caching old
+     * recipes and loot after the new resources have been installed.
      */
-    private static ReloadableServerResources builtFrom = null;
+    private static RecipeManager builtRecipes;
+    private static ReloadableServerRegistries.Holder builtLoot;
 
     private SampleResolver() {}
 
@@ -91,7 +93,7 @@ public final class SampleResolver {
         byProduct(level).forEach((item, ores) -> {
             if (!ores.isEmpty() && item != Items.AIR) items.add(item);   // air: an ore with no item
         });
-        for (Item item : ForgeRegistries.ITEMS) {
+        for (Item item : BuiltInRegistries.ITEM) {
             if (item instanceof BlockItem blockItem
                     && blockItem.getBlock().defaultBlockState().is(Tags.Blocks.ORES)) items.add(item);
         }
@@ -100,8 +102,9 @@ public final class SampleResolver {
     }
 
     private static Map<Item, Set<Block>> byProduct(ServerLevel level) {
-        ReloadableServerResources data = level.getServer().getServerResources().managers();
-        if (itemToOres != null && builtFrom == data) return itemToOres;
+        RecipeManager recipes = level.getServer().getRecipeManager();
+        ReloadableServerRegistries.Holder loot = level.getServer().reloadableRegistries();
+        if (itemToOres != null && builtRecipes == recipes && builtLoot == loot) return itemToOres;
 
         // seed: each ore block's own item, and everything the ore drops, stand for that ore
         Map<Item, Set<Block>> map = new HashMap<>();
@@ -110,7 +113,7 @@ public final class SampleResolver {
                 .withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(BlockPos.ZERO))
                 .withParameter(LootContextParams.TOOL, new ItemStack(Items.NETHERITE_PICKAXE));
 
-        for (Block block : ForgeRegistries.BLOCKS) {
+        for (Block block : BuiltInRegistries.BLOCK) {
             BlockState state = block.defaultBlockState();
             if (!state.is(Tags.Blocks.ORES)) continue;
             map.computeIfAbsent(block.asItem(), k -> new HashSet<>()).add(block);
@@ -131,11 +134,14 @@ public final class SampleResolver {
 
         // material links from the server's recipes: item -> the items made purely of it
         Map<Item, Set<Item>> links = new HashMap<>();
-        RecipeManager recipes = level.getRecipeManager();
-        RegistryAccess access = level.registryAccess();
-        linkCooking(recipes.getAllRecipesFor(RecipeType.SMELTING).stream().map(net.minecraft.world.item.crafting.RecipeHolder::value).toList(), access, links);
-        linkCooking(recipes.getAllRecipesFor(RecipeType.BLASTING).stream().map(net.minecraft.world.item.crafting.RecipeHolder::value).toList(), access, links);
-        linkCrafting(recipes.getAllRecipesFor(RecipeType.CRAFTING).stream().map(net.minecraft.world.item.crafting.RecipeHolder::value).toList(), access, links);
+        for (RecipeHolder<?> holder : recipes.getRecipes()) {
+            Recipe<?> recipe = holder.value();
+            if (recipe.getType() == RecipeType.SMELTING || recipe.getType() == RecipeType.BLASTING) {
+                linkCooking(recipe, level, links);
+            } else if (recipe.getType() == RecipeType.CRAFTING) {
+                linkCrafting(recipe, level, links);
+            }
+        }
 
         // carry the ores along the links until nothing changes; a pass that changes something
         // adds at least one (item, ore) pair and there are finitely many, so this ends
@@ -166,7 +172,8 @@ public final class SampleResolver {
         siblings.forEach((item, ores) -> map.computeIfAbsent(item, k -> new HashSet<>()).addAll(ores));
 
         itemToOres = map;
-        builtFrom = data;
+        builtRecipes = recipes;
+        builtLoot = loot;
         return map;
     }
 
@@ -174,17 +181,16 @@ public final class SampleResolver {
      * Smelting and blasting: the ingredient becomes the result. One way only, so smelting an
      * iron pickaxe into nuggets never makes the pickaxe a sample.
      */
-    private static void linkCooking(List<? extends Recipe<?>> recipes, RegistryAccess access,
-                                    Map<Item, Set<Item>> links) {
-        for (Recipe<?> recipe : recipes) {
-            try {
-                ItemStack result = recipe.getResultItem(access);
-                List<Ingredient> ingredients = recipe.getIngredients();
-                if (result.isEmpty() || ingredients.isEmpty()) continue;
-                for (Item from : accepted(ingredients.get(0))) link(links, from, result.getItem());
-            } catch (Exception e) {
-                // a mod's recipe may not be readable outside its machine; skip it
+    private static void linkCooking(Recipe<?> recipe, ServerLevel level, Map<Item, Set<Item>> links) {
+        try {
+            List<Ingredient> ingredients = recipe.placementInfo().ingredients();
+            if (ingredients.size() != 1) return;
+            Set<Item> results = results(recipe, level);
+            for (Item from : accepted(ingredients.getFirst())) {
+                for (Item result : results) link(links, from, result);
             }
+        } catch (Exception e) {
+            // A mod's recipe may not expose its ingredients or display outside its machine.
         }
     }
 
@@ -196,43 +202,46 @@ public final class SampleResolver {
      * with two sources from joining them; blue dye comes from lapis and from cornflowers, so a
      * cornflower must not find lapis ore. Recipes that mix materials link nothing.
      */
-    private static void linkCrafting(List<? extends Recipe<?>> recipes, RegistryAccess access,
-                                     Map<Item, Set<Item>> links) {
-        for (Recipe<?> recipe : recipes) {
-            try {
-                if (recipe.isSpecial()) continue;
-                ItemStack result = recipe.getResultItem(access);
-                if (result.isEmpty()) continue;
-                Set<Item> material = null;
-                boolean pure = true;
-                for (Ingredient ingredient : recipe.getIngredients()) {
-                    if (ingredient.isEmpty()) continue;   // a blank cell of a shaped recipe
-                    Set<Item> accepted = accepted(ingredient);
-                    if (material == null) {
-                        material = accepted;
-                    } else if (!material.equals(accepted)) {
-                        pure = false;
-                        break;
-                    }
-                }
-                if (!pure || material == null) continue;
-                for (Item item : material) link(links, item, result.getItem());
-            } catch (Exception e) {
-                // a mod's recipe may not be readable outside a crafting grid; skip it
+    private static void linkCrafting(Recipe<?> recipe, ServerLevel level, Map<Item, Set<Item>> links) {
+        try {
+            if (recipe.isSpecial()) return;
+            Set<Item> material = null;
+            // PlacementInfo contains occupied ingredients only, without blank shaped cells.
+            for (Ingredient ingredient : recipe.placementInfo().ingredients()) {
+                Set<Item> accepted = accepted(ingredient);
+                if (accepted.isEmpty()) return;
+                if (material == null) material = accepted;
+                else if (!material.equals(accepted)) return;
             }
+            if (material == null) return;
+            for (Item result : results(recipe, level)) {
+                for (Item item : material) link(links, item, result);
+            }
+        } catch (Exception e) {
+            // A mod's recipe may not expose its ingredients or display outside a crafting grid.
         }
     }
 
+    /** Server recipe displays replace the removed getResultItem API, without guessing inputs. */
+    private static Set<Item> results(Recipe<?> recipe, ServerLevel level) {
+        Set<Item> items = new HashSet<>();
+        for (RecipeDisplay display : recipe.display()) {
+            for (ItemStack stack : display.result().resolveForStacks(SlotDisplayContext.fromLevel(level))) {
+                if (!stack.isEmpty() && stack.getItem() != Items.BARRIER) items.add(stack.getItem());
+            }
+        }
+        return items;
+    }
+
     /**
-     * The items an ingredient accepts. For a tag with no members Forge hands out a barrier
-     * named "Empty Tag: ..." instead (Ingredient.TagValue.getItems). That is no material, so it
-     * is left out: such an ingredient accepts nothing, links nothing, and keeps a crafting
-     * recipe that needs it from counting as pure.
+     * The items an ingredient accepts. Empty stacks and barrier placeholders are not
+     * usable materials and must not link a recipe to an ore.
      */
     private static Set<Item> accepted(Ingredient ingredient) {
         Set<Item> items = new HashSet<>();
-        for (ItemStack stack : ingredient.getItems()) {
-            if (!stack.isEmpty() && stack.getItem() != Items.BARRIER) items.add(stack.getItem());
+        for (var holder : ingredient.items()) {
+            Item item = holder.value();
+            if (item != Items.AIR && item != Items.BARRIER) items.add(item);
         }
         return items;
     }
@@ -244,6 +253,7 @@ public final class SampleResolver {
     /** Drops the map and the data it holds on to; the next call rebuilds it. */
     public static synchronized void invalidate() {
         itemToOres = null;
-        builtFrom = null;
+        builtRecipes = null;
+        builtLoot = null;
     }
 }
