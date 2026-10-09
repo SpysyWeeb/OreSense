@@ -14,7 +14,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import org.slf4j.Logger;
 
 import javax.annotation.Nullable;
@@ -99,8 +99,8 @@ public final class SampleAliases extends SimpleJsonResourceReloadListener {
     @Nullable
     private static Item item(String id) {
         ResourceLocation location = ResourceLocation.tryParse(id);
-        if (location == null || !ForgeRegistries.ITEMS.containsKey(location)) return null;
-        Item item = ForgeRegistries.ITEMS.getValue(location);
+        if (location == null || !BuiltInRegistries.ITEM.containsKey(location)) return null;
+        Item item = BuiltInRegistries.ITEM.get(location);
         return item == Items.AIR ? null : item;
     }
 
@@ -108,8 +108,8 @@ public final class SampleAliases extends SimpleJsonResourceReloadListener {
     @Nullable
     private static Block block(String id) {
         ResourceLocation location = ResourceLocation.tryParse(id);
-        if (location == null || !ForgeRegistries.BLOCKS.containsKey(location)) return null;
-        Block block = ForgeRegistries.BLOCKS.getValue(location);
+        if (location == null || !BuiltInRegistries.BLOCK.containsKey(location)) return null;
+        Block block = BuiltInRegistries.BLOCK.get(location);
         return block == Blocks.AIR ? null : block;
     }
 }
