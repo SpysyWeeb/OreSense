@@ -27,7 +27,7 @@ import net.minecraft.world.item.Items;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
+import net.minecraft.util.RandomSource;
 
 /**
  * Draws the 16x16 dial as stacked layers (base, sonar ring, charge gauge, needle tail and tip, lit
@@ -240,7 +240,7 @@ public class SensorRenderer {
 
         // the same quad lists, in the same order and with the same seed, as renderModelLists
         List<BakedQuad> quads = new ArrayList<>();
-        Random rand = new Random();
+        RandomSource rand = RandomSource.create();
         for (Direction side : Direction.values()) {
             rand.setSeed(42L);
             quads.addAll(model.getQuads(null, side, rand));
@@ -338,7 +338,7 @@ public class SensorRenderer {
     private static void drawLayer(PoseStack ps, VertexConsumer vc, BakedModel model,
                                   float r, float g, float b, float a, int light, int overlay) {
         PoseStack.Pose pose = ps.last();
-        Random rand = new Random(42L);
+        RandomSource rand = RandomSource.create(42L);
         for (Direction d : Direction.values())
             for (BakedQuad q : model.getQuads(null, d, rand)) drawQuad(pose, vc, q, r, g, b, a, light, overlay);
         for (BakedQuad q : model.getQuads(null, null, rand)) drawQuad(pose, vc, q, r, g, b, a, light, overlay);

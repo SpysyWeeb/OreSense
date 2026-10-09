@@ -24,11 +24,11 @@ dependencies {
     modImplementation "net.fabricmc.fabric-api:fabric-api:${fabric_version}"
 }
 
-// Build with Java 17 while keeping the mod compatible with Minecraft 1.17's Java 16.
+// Minecraft 1.19 requires Java 17.
 java.toolchain.languageVersion = JavaLanguageVersion.of(17)
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8'
-    options.release = 16
+    options.release = 17
 }
 
 processResources {
