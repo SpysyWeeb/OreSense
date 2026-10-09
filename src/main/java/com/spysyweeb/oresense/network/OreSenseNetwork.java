@@ -2,6 +2,7 @@ package com.spysyweeb.oresense.network;
 
 import com.spysyweeb.oresense.OreSense;
 import net.fabricmc.fabric.api.networking.v1.PacketByteBufs;
+import net.fabricmc.fabric.api.networking.v1.PayloadTypeRegistry;
 import net.fabricmc.fabric.api.networking.v1.ServerLoginConnectionEvents;
 import net.fabricmc.fabric.api.networking.v1.ServerLoginNetworking;
 import net.fabricmc.fabric.api.networking.v1.ServerPlayNetworking;
@@ -14,18 +15,18 @@ import net.minecraft.server.level.ServerPlayer;
 public final class OreSenseNetwork {
     static final int PROTOCOL = 1;
     static final ResourceLocation HANDSHAKE = new ResourceLocation(OreSense.MODID, "handshake");
-    static final ResourceLocation SAMPLES = new ResourceLocation(OreSense.MODID, "known_samples");
 
     private OreSenseNetwork() {}
 
     public static void register() {
+        PayloadTypeRegistry.playS2C().register(KnownSamplesPacket.TYPE, KnownSamplesPacket.STREAM_CODEC);
         ServerLoginConnectionEvents.QUERY_START.register((handler, server, sender, synchronizer) ->
                 sender.sendPacket(HANDSHAKE, protocolPacket()));
         ServerLoginNetworking.registerGlobalReceiver(HANDSHAKE,
                 (server, handler, understood, buf, synchronizer, sender) -> {
                     if (!understood || !matchesProtocol(buf)) {
                         handler.disconnect(Component.literal(
-                                "This server requires a compatible OreSense installation for Minecraft 1.20.1 (Fabric)."));
+                                "This server requires a compatible OreSense installation for Minecraft 1.20.5 (Fabric)."));
                     }
                 });
     }
@@ -45,8 +46,6 @@ public final class OreSenseNetwork {
     }
 
     public static void send(ServerPlayer player, KnownSamplesPacket packet) {
-        FriendlyByteBuf buf = PacketByteBufs.create();
-        KnownSamplesPacket.encode(packet, buf);
-        ServerPlayNetworking.send(player, SAMPLES, buf);
+        ServerPlayNetworking.send(player, packet);
     }
 }

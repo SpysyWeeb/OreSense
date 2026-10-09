@@ -286,7 +286,7 @@ public class SensorRenderer {
                             Float.intBitsToFloat(v[o + UV_OFFSET + 1]))
                         .overlayCoords(overlay)
                         .uv2(light)
-                        .normal(dial.normal(), 0f, 0f, 1f)
+                        .normal(dial, 0f, 0f, 1f)
                         .endVertex();
             }
         }
@@ -364,7 +364,7 @@ public class SensorRenderer {
                             Float.intBitsToFloat(vertices[o + UV_OFFSET + 1]))
                     .overlayCoords(overlay)
                     .uv2(light)
-                    .normal(pose.normal(), face.getStepX(), face.getStepY(), face.getStepZ())
+                    .normal(pose, face.getStepX(), face.getStepY(), face.getStepZ())
                     .endVertex();
         }
     }

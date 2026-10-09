@@ -22,7 +22,6 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerFactory;
 import net.fabricmc.fabric.api.item.v1.FabricItem;
-import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Inventory;
@@ -76,36 +75,36 @@ public class OreSensorItem extends Item implements FabricItem {
     /** Where the needle points, or null if the sensor has nothing to point at. */
     @Nullable
     public static BlockPos getTarget(ItemStack sensor) {
-        CompoundTag tag = sensor.getTag();
+        CompoundTag tag = SensorData.read(sensor);
         if (tag == null || !tag.contains(TARGET_TAG)) return null;
         int[] xyz = tag.getIntArray(TARGET_TAG);
         return xyz.length == 3 ? new BlockPos(xyz[0], xyz[1], xyz[2]) : null;
     }
 
     public static String getTargetDimension(ItemStack sensor) {
-        CompoundTag tag = sensor.getTag();
+        CompoundTag tag = SensorData.read(sensor);
         return tag == null ? "" : tag.getString(DIM_TAG);
     }
 
     public static long getPingTime(ItemStack sensor) {
-        CompoundTag tag = sensor.getTag();
-        return tag == null ? Long.MIN_VALUE : tag.getLong(PING_TAG);
+        CompoundTag tag = SensorData.read(sensor);
+        return tag.getLong(PING_TAG);
     }
 
     /** Distance to the target, or -1 when the last check found nothing. */
     public static float getDistance(ItemStack sensor) {
-        CompoundTag tag = sensor.getTag();
+        CompoundTag tag = SensorData.read(sensor);
         return tag == null || !tag.contains(DIST_TAG) ? -1f : tag.getFloat(DIST_TAG);
     }
 
     public static float getRange(ItemStack sensor) {
-        CompoundTag tag = sensor.getTag();
+        CompoundTag tag = SensorData.read(sensor);
         return tag == null || !tag.contains(RANGE_TAG) ? 32f : tag.getFloat(RANGE_TAG);
     }
 
     /** Amethyst shards stored, 0..{@link #MAX_CHARGES}. */
     public static int getCharges(ItemStack sensor) {
-        CompoundTag tag = sensor.getTag();
+        CompoundTag tag = SensorData.read(sensor);
         return tag == null ? 0 : Mth.clamp(tag.getInt(CHARGES_TAG), 0, MAX_CHARGES);
     }
 
@@ -116,14 +115,15 @@ public class OreSensorItem extends Item implements FabricItem {
      */
     public static void setCharges(ItemStack sensor, int charges) {
         int count = Mth.clamp(charges, 0, MAX_CHARGES);
-        CompoundTag tag = sensor.getOrCreateTag();
+        CompoundTag tag = SensorData.read(sensor);
         tag.putInt(CHARGES_TAG, count);
         if (count > 0 && tag.getBoolean(NO_CHARGE_TAG)) tag.putBoolean(NO_CHARGE_TAG, false);
+        SensorData.write(sensor, tag);
     }
 
     /** The server found a vein but had no charge to lock it with (never for creative players). */
     public static boolean isNoCharge(ItemStack sensor) {
-        CompoundTag tag = sensor.getTag();
+        CompoundTag tag = SensorData.read(sensor);
         return tag != null && tag.getBoolean(NO_CHARGE_TAG);
     }
 
@@ -145,8 +145,12 @@ public class OreSensorItem extends Item implements FabricItem {
 
     @Nullable
     private static CompoundTag lockOf(ItemStack sensor) {
-        CompoundTag tag = sensor.getTag();
-        return tag != null && tag.contains(LOCK_TAG, Tag.TAG_COMPOUND) ? tag.getCompound(LOCK_TAG) : null;
+        return lockOf(SensorData.read(sensor));
+    }
+
+    @Nullable
+    private static CompoundTag lockOf(CompoundTag tag) {
+        return tag.contains(LOCK_TAG, Tag.TAG_COMPOUND) ? tag.getCompound(LOCK_TAG) : null;
     }
 
     /**
@@ -155,9 +159,8 @@ public class OreSensorItem extends Item implements FabricItem {
      * scanning this stack right now". NoCharge is written every time too, so it never outlives
      * the check that set it.
      */
-    private static void record(ItemStack sensor, Level level, @Nullable BlockPos pos, double distance, int range,
+    private static void record(CompoundTag tag, Level level, @Nullable BlockPos pos, double distance, int range,
                                boolean noCharge) {
-        CompoundTag tag = sensor.getOrCreateTag();
         tag.putString(DIM_TAG, dimensionId(level));
         tag.putLong(PING_TAG, level.getGameTime());
         tag.putFloat(RANGE_TAG, range);
@@ -171,12 +174,12 @@ public class OreSensorItem extends Item implements FabricItem {
         }
     }
 
-    private static void hit(ItemStack sensor, Level level, BlockPos pos, double distance, int range) {
-        record(sensor, level, pos, distance, range, false);
+    private static void hit(CompoundTag tag, Level level, BlockPos pos, double distance, int range) {
+        record(tag, level, pos, distance, range, false);
     }
 
-    private static void miss(ItemStack sensor, Level level, int range) {
-        record(sensor, level, null, -1, range, false);
+    private static void miss(CompoundTag tag, Level level, int range) {
+        record(tag, level, null, -1, range, false);
     }
 
     /**
@@ -184,8 +187,7 @@ public class OreSensorItem extends Item implements FabricItem {
      * and no PingTime, so the dial goes dormant now instead of showing a reading that nobody
      * refreshes (a lock on a mined-out block, or a search) until the ping goes stale.
      */
-    private static void endReading(ItemStack sensor) {
-        CompoundTag tag = sensor.getOrCreateTag();
+    private static void endReading(CompoundTag tag) {
         tag.remove(TARGET_TAG);
         tag.remove(PING_TAG);
         tag.putFloat(DIST_TAG, -1f);
@@ -207,9 +209,7 @@ public class OreSensorItem extends Item implements FabricItem {
     }
 
     public static ItemStack getSample(ItemStack sensor) {
-        CompoundTag tag = sensor.getTag();
-        if (tag == null || !tag.contains(SAMPLE_TAG)) return ItemStack.EMPTY;
-        return ItemStack.of(tag.getCompound(SAMPLE_TAG));
+        return SensorData.sample(sensor);
     }
 
     /**
@@ -220,16 +220,11 @@ public class OreSensorItem extends Item implements FabricItem {
      * tell a swapped sample from a mined-out vein.
      */
     public static void setSample(ItemStack sensor, ItemStack sample) {
-        if (!ItemStack.isSameItemSameTags(getSample(sensor), sample) && sensor.getTag() != null) {
-            sensor.getTag().remove(LOCK_TAG);
-        }
-        if (sample.isEmpty()) {
-            if (sensor.getTag() != null) sensor.getTag().remove(SAMPLE_TAG);
-            return;
-        }
-        ItemStack one = sample.copy();
-        one.setCount(1);
-        sensor.getOrCreateTag().put(SAMPLE_TAG, one.save(new CompoundTag()));
+        CompoundTag tag = SensorData.read(sensor);
+        if (!ItemStack.isSameItemSameComponents(getSample(sensor), sample)) tag.remove(LOCK_TAG);
+        tag.remove(SAMPLE_TAG); // sample stacks now have their own registry-aware component
+        SensorData.sample(sensor, sample);
+        SensorData.write(sensor, tag);
     }
 
     /**
@@ -256,6 +251,7 @@ public class OreSensorItem extends Item implements FabricItem {
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
         ItemStack sensor = player.getItemInHand(hand);
+        if (!level.isClientSide) SensorData.migrateSample(sensor, level.registryAccess());
         if (player.isSecondaryUseActive() && isLocked(sensor)) {
             if (level instanceof ServerLevel serverLevel && player instanceof ServerPlayer serverPlayer) {
                 releaseByHand(serverLevel, serverPlayer, sensor);
@@ -263,10 +259,10 @@ public class OreSensorItem extends Item implements FabricItem {
             return InteractionResultHolder.sidedSuccess(sensor, level.isClientSide());
         }
         if (!level.isClientSide && player instanceof ServerPlayer serverPlayer) {
-            serverPlayer.openMenu(new ExtendedScreenHandlerFactory() {
+            serverPlayer.openMenu(new ExtendedScreenHandlerFactory<InteractionHand>() {
                 @Override
-                public void writeScreenOpeningData(ServerPlayer openingPlayer, FriendlyByteBuf buf) {
-                    buf.writeEnum(hand);
+                public InteractionHand getScreenOpeningData(ServerPlayer openingPlayer) {
+                    return hand;
                 }
 
                 @Override
@@ -284,8 +280,9 @@ public class OreSensorItem extends Item implements FabricItem {
     }
 
     private static void releaseByHand(ServerLevel level, ServerPlayer player, ItemStack sensor) {
-        forgetOtherLevel(level, sensor.getOrCreateTag());
-        CompoundTag lock = lockOf(sensor);
+        CompoundTag tag = SensorData.read(sensor);
+        forgetOtherLevel(level, tag);
+        CompoundTag lock = lockOf(tag);
         if (lock != null) {
             ItemStack sample = getSample(sensor);
             Set<Block> targets = sample.isEmpty() ? Set.of() : SampleResolver.resolve(level, sample);
@@ -294,7 +291,7 @@ public class OreSensorItem extends Item implements FabricItem {
             List<BlockPos> remaining = targets.isEmpty() ? List.of() : remaining(level, blocks, targets);
             if (!paid && !remaining.isEmpty()) {
                 BlockPos center = player.blockPosition();
-                if (distance(center, nearest(remaining, center)) <= FOUND_DISTANCE && pay(player, sensor, lock)) {
+                if (distance(center, nearest(remaining, center)) <= FOUND_DISTANCE && pay(player, tag, lock)) {
                     paid = true;
                     player.playNotifySound(SoundEvents.AMETHYST_CLUSTER_BREAK, SoundSource.PLAYERS, 1.0f, 1.0f);
                 }
@@ -302,11 +299,11 @@ public class OreSensorItem extends Item implements FabricItem {
             // A hand release means "not this one": skip the vein whether or not it was paid,
             // otherwise the next check re-locks the same vein a second later (Alex heard exactly
             // that: the release chime followed by a lock chime).
-            release(level, sensor, true, blocks, remaining, targets);
+            release(level, tag, true, blocks, remaining, targets);
         }
-        miss(sensor, level, Config.INSTANCE.horizontalRange.get());
-        player.playNotifySound(SoundEvents.AMETHYST_BLOCK_RESONATE, SoundSource.PLAYERS,
-                0.8f, 0.6f);
+        miss(tag, level, Config.INSTANCE.horizontalRange.get());
+        SensorData.write(sensor, tag);
+        player.playNotifySound(SoundEvents.AMETHYST_BLOCK_RESONATE, SoundSource.PLAYERS, 0.8f, 0.6f);
     }
 
     // ---- server check ----
@@ -319,6 +316,7 @@ public class OreSensorItem extends Item implements FabricItem {
     @Override
     public void inventoryTick(ItemStack sensor, Level level, Entity entity, int slot, boolean selected) {
         if (!(level instanceof ServerLevel serverLevel) || !(entity instanceof ServerPlayer player)) return;
+        SensorData.migrateSample(sensor, level.registryAccess());
         // Compare stack identity so the off-hand sensor is scanned as well.
         boolean inHand = sensor == player.getMainHandItem() || sensor == player.getOffhandItem();
         if (!inHand && !isLocked(sensor)) return;
@@ -329,9 +327,14 @@ public class OreSensorItem extends Item implements FabricItem {
     }
 
     private static void check(ServerLevel level, ServerPlayer player, ItemStack sensor, boolean inHand) {
+        CompoundTag tag = SensorData.read(sensor);
+        check(level, player, sensor, inHand, tag);
+        SensorData.write(sensor, tag);
+    }
+
+    private static void check(ServerLevel level, ServerPlayer player, ItemStack sensor, boolean inHand, CompoundTag tag) {
         int hRange = Config.INSTANCE.horizontalRange.get();
         int vRange = Config.INSTANCE.verticalRange.get();
-        CompoundTag tag = sensor.getOrCreateTag();
         forgetOtherLevel(level, tag);
 
         // 1. nothing to look for: a lock means nothing without its sample and goes free
@@ -339,18 +342,18 @@ public class OreSensorItem extends Item implements FabricItem {
         Set<Block> targets = sample.isEmpty() ? Set.of() : SampleResolver.resolve(level, sample);
         if (targets.isEmpty()) {
             tag.remove(LOCK_TAG);
-            if (inHand) miss(sensor, level, hRange); else endReading(sensor);
+            if (inHand) miss(tag, level, hRange); else endReading(tag);
             return;
         }
         pruneIgnore(level, tag, targets);
 
         // 2. locked: follow the vein
-        CompoundTag lock = lockOf(sensor);
-        if (lock != null && followLock(level, player, sensor, lock, targets, inHand, hRange, vRange)) return;
+        CompoundTag lock = lockOf(tag);
+        if (lock != null && followLock(level, player, sensor, tag, lock, targets, inHand, hRange, vRange)) return;
 
         // 3. not locked (any more) and not held: nobody is looking at it
         if (!inHand) {
-            endReading(sensor);
+            endReading(tag);
             return;
         }
 
@@ -359,11 +362,11 @@ public class OreSensorItem extends Item implements FabricItem {
         ScanResult result = OreScanner.scan(level, center, targets, hRange, vRange,
                 tag.getLongArray(IGNORE_TAG), VEIN_CAP, IGNORE_VEINS);
         if (!result.found()) {
-            miss(sensor, level, hRange);
+            miss(tag, level, hRange);
             return;
         }
         if (getCharges(sensor) == 0 && !player.getAbilities().instabuild) {
-            record(sensor, level, null, -1, hRange, true);
+            record(tag, level, null, -1, hRange, true);
             return;
         }
         List<BlockPos> vein = OreScanner.vein(level, result.nearest(), targets, VEIN_CAP);
@@ -373,10 +376,10 @@ public class OreSensorItem extends Item implements FabricItem {
         newLock.putLong(LOCK_LOST, -1L);
         newLock.putBoolean(LOCK_PAID, false);
         tag.put(LOCK_TAG, newLock);
-        hit(sensor, level, result.nearest(), result.nearestDistance(), hRange);
-        // Use the same resonance as manual release, at a higher pitch for a new lock.
-        player.playNotifySound(SoundEvents.AMETHYST_BLOCK_RESONATE, SoundSource.PLAYERS,
-                1.0f, 1.2f);
+        hit(tag, level, result.nearest(), result.nearestDistance(), hRange);
+        // the amethyst block's resonance, like the manual release. Both used its chime, which
+        // vanilla's sounds.json defines at volume 0.2: this call came out at 0.2 x 0.6 = 0.12
+        player.playNotifySound(SoundEvents.AMETHYST_BLOCK_RESONATE, SoundSource.PLAYERS, 1.0f, 1.2f);
         showReading(player, center, result.nearest(), result.nearestDistance(), hRange, vein.size());
     }
 
@@ -384,20 +387,20 @@ public class OreSensorItem extends Item implements FabricItem {
      * Step 2 of a check. True when this check's reading is written (the lock holds, or it just
      * ran out of grace); false when the lock was let go and the check goes on as unlocked.
      */
-    private static boolean followLock(ServerLevel level, ServerPlayer player, ItemStack sensor, CompoundTag lock,
+    private static boolean followLock(ServerLevel level, ServerPlayer player, ItemStack sensor, CompoundTag tag, CompoundTag lock,
                                       Set<Block> targets, boolean inHand, int hRange, int vRange) {
         boolean paid = lock.getBoolean(LOCK_PAID);
         if (!paid && getCharges(sensor) == 0 && !player.getAbilities().instabuild) {
             // the charge this lock was taken on is gone (shards taken back out, or the lock was
             // made in creative); it goes free rather than let its vein be mined for nothing
-            sensor.getOrCreateTag().remove(LOCK_TAG);
+            tag.remove(LOCK_TAG);
             return false;
         }
 
         long[] blocks = lock.getLongArray(LOCK_BLOCKS);
         List<BlockPos> remaining = remaining(level, blocks, targets);
         if (remaining.isEmpty()) {
-            release(level, sensor, paid, blocks, remaining, targets);
+            release(level, tag, paid, blocks, remaining, targets);
             return false;
         }
 
@@ -412,12 +415,12 @@ public class OreSensorItem extends Item implements FabricItem {
             if (lostSince < 0) {
                 lock.putLong(LOCK_LOST, now);
             } else if (now - lostSince > LOCK_GRACE_TICKS) {
-                release(level, sensor, paid, blocks, remaining, targets);
-                if (inHand) miss(sensor, level, hRange); else endReading(sensor);
+                release(level, tag, paid, blocks, remaining, targets);
+                if (inHand) miss(tag, level, hRange); else endReading(tag);
                 return true;
             }
         }
-        hit(sensor, level, nearest, distance, hRange);
+        hit(tag, level, nearest, distance, hRange);
         if (inHand) showReading(player, center, nearest, distance, hRange, remaining.size());
         return true;
     }
@@ -427,9 +430,8 @@ public class OreSensorItem extends Item implements FabricItem {
      * not lock it, and charge for it, again; an unpaid one goes free and may be locked again.
      */
     /** Drops the lock; with {@code ignore} the vein is remembered so it is not locked again. */
-    private static void release(Level level, ItemStack sensor, boolean ignore, long[] blocks,
+    private static void release(Level level, CompoundTag tag, boolean ignore, long[] blocks,
                                 List<BlockPos> remaining, Set<Block> targets) {
-        CompoundTag tag = sensor.getOrCreateTag();
         tag.remove(LOCK_TAG);
         if (ignore) addIgnore(tag, paidVeinAnchors(level, blocks, remaining, targets));
     }
@@ -461,32 +463,38 @@ public class OreSensorItem extends Item implements FabricItem {
         for (NonNullList<ItemStack> part : List.of(inventory.items, inventory.offhand)) {
             for (ItemStack stack : part) {
                 if (!(stack.getItem() instanceof OreSensorItem)) continue;
-                CompoundTag lock = lockOf(stack);
+                CompoundTag tag = SensorData.read(stack);
+                CompoundTag lock = lockOf(tag);
                 if (lock == null || lock.getBoolean(LOCK_PAID)) continue;
                 if (!dimension.equals(getTargetDimension(stack))) continue;
                 if (!contains(lock.getLongArray(LOCK_BLOCKS), broken)) continue;
-                if (pay(player, stack, lock)) {
+                if (pay(player, tag, lock)) {
+                    SensorData.write(stack, tag);
                     spent = true;
                     continue;
                 }
-                stack.getOrCreateTag().remove(LOCK_TAG);
+                tag.remove(LOCK_TAG);
                 if (stack == player.getMainHandItem() || stack == player.getOffhandItem()) {
-                    record(stack, level, null, -1, Config.INSTANCE.horizontalRange.get(), true);
+                    record(tag, level, null, -1, Config.INSTANCE.horizontalRange.get(), true);
                 } else {
-                    endReading(stack);
+                    endReading(tag);
                 }
+                SensorData.write(stack, tag);
             }
         }
         if (spent) player.playNotifySound(SoundEvents.AMETHYST_CLUSTER_BREAK, SoundSource.PLAYERS, 1.0f, 1.0f);
     }
 
     /** Spends the lock's charge and marks it paid. False when there is no charge to spend. */
-    private static boolean pay(ServerPlayer player, ItemStack sensor, CompoundTag lock) {
+    private static boolean pay(ServerPlayer player, CompoundTag tag, CompoundTag lock) {
         boolean creative = player.getAbilities().instabuild;
-        int charges = getCharges(sensor);
+        int charges = Mth.clamp(tag.getInt(CHARGES_TAG), 0, MAX_CHARGES);
         if (charges == 0 && !creative) return false;
         lock.putBoolean(LOCK_PAID, true);
-        if (!creative) setCharges(sensor, charges - 1);
+        if (!creative) {
+            tag.putInt(CHARGES_TAG, charges - 1);
+            if (charges > 1) tag.putBoolean(NO_CHARGE_TAG, false);
+        }
         return true;
     }
 
@@ -648,7 +656,7 @@ public class OreSensorItem extends Item implements FabricItem {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
+    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltip, TooltipFlag flag) {
         ItemStack sample = getSample(stack);
         tooltip.add(sample.isEmpty()
                 ? Component.translatable("oresense.tooltip.empty").withStyle(ChatFormatting.DARK_GRAY)
@@ -668,5 +676,4 @@ public class OreSensorItem extends Item implements FabricItem {
     public boolean allowContinuingBlockBreaking(Player player, ItemStack oldStack, ItemStack newStack) {
         return true;
     }
-
 }

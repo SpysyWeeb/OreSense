@@ -6,7 +6,7 @@ import com.spysyweeb.oresense.OreSensorItem;
 import com.spysyweeb.oresense.scan.Signal;
 import net.fabricmc.fabric.api.client.model.ModelLoadingRegistry;
 import net.fabricmc.fabric.api.client.rendering.v1.BuiltinItemRendererRegistry;
-import net.fabricmc.fabric.api.client.screenhandler.v1.ScreenRegistry;
+import net.minecraft.client.gui.screens.MenuScreens;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
@@ -105,7 +105,7 @@ public class SensorClient {
     }
 
     public static void onClientSetup() {
-        ScreenRegistry.register(OreSense.ORE_SENSOR_MENU, OreSensorScreen::new);
+        MenuScreens.register(OreSense.ORE_SENSOR_MENU, OreSensorScreen::new);
         BuiltinItemRendererRegistry.DynamicItemRenderer renderer = SensorRenderer.get()::renderByItem;
         BuiltinItemRendererRegistry.INSTANCE.register(OreSense.ORE_SENSOR, renderer);
     }

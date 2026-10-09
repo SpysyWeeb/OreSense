@@ -9,6 +9,10 @@
     {
       "id": "#forge:ingots/gold",
       "required": false
+    },
+    {
+      "id": "#c:ingots/gold",
+      "required": false
     }
   ]
 }
