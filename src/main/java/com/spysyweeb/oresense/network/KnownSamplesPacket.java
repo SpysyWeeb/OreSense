@@ -15,7 +15,8 @@ public record KnownSamplesPacket(Set<Item> items, boolean anyBlock) {
 
     public static void encode(KnownSamplesPacket packet, FriendlyByteBuf buf) {
         buf.writeBoolean(packet.anyBlock);
-        buf.writeCollection(packet.items, (b, item) -> b.writeIdentifier(ForgeRegistries.ITEMS.getKey(item)));
+        buf.writeVarInt(packet.items.size());
+        for (Item item : packet.items) buf.writeIdentifier(ForgeRegistries.ITEMS.getKey(item));
     }
 
     /**
@@ -25,7 +26,12 @@ public record KnownSamplesPacket(Set<Item> items, boolean anyBlock) {
      */
     public static KnownSamplesPacket decode(FriendlyByteBuf buf) {
         boolean anyBlock = buf.readBoolean();
-        Set<Item> items = buf.readCollection(HashSet::new, b -> ForgeRegistries.ITEMS.getValue(b.readIdentifier()));
+        int count = buf.readVarInt();
+        if (count < 0 || count > buf.readableBytes()) {
+            throw new io.netty.handler.codec.DecoderException("Invalid sample item count: " + count);
+        }
+        Set<Item> items = new HashSet<>();
+        for (int i = 0; i < count; i++) items.add(ForgeRegistries.ITEMS.getValue(buf.readIdentifier()));
         items.remove(null);
         items.remove(Items.AIR);
         return new KnownSamplesPacket(items, anyBlock);

@@ -8,7 +8,7 @@ import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
@@ -92,7 +92,7 @@ public class OreSensorMenu extends AbstractContainerMenu {
      * or charge slot names that slot, not this one; their mayPlace refuses the sensor there.
      */
     @Override
-    public void clicked(int slotId, int dragType, ClickType clickType, Player p) {
+    public void clicked(int slotId, int dragType, ContainerInput clickType, Player p) {
         if (sensorSlot >= 0 && slotId == sensorSlot) return;
         super.clicked(slotId, dragType, clickType, p);
         // Slot.tryRemove writes through Container.removeItem and only calls setChanged when the
@@ -137,7 +137,7 @@ public class OreSensorMenu extends AbstractContainerMenu {
         super.removed(p);
         // hand the sample back if the player closes with something in the slot we could not store
         if (!p.level().isClientSide() && !sample.getItem(0).isEmpty() && OreSensorItem.getSample(sensor).isEmpty()) {
-            p.drop(sample.getItem(0), false);
+            p.drop(sample.getItem(0), false, net.minecraft.util.Prediction.SERVER_ONLY);
         }
     }
 
