@@ -12,20 +12,22 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.fabricmc.fabric.api.screenhandler.v1.ScreenHandlerRegistry;
 import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.packs.PackType;
 import net.minecraft.world.inventory.MenuType;
-import net.minecraft.world.item.CreativeModeTab;
+import net.minecraft.world.item.CreativeModeTabs;
+import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.minecraft.world.item.Item;
 
 public class OreSense implements ModInitializer {
     public static final String MODID = "oresense";
 
-    public static final Item ORE_SENSOR = Registry.register(Registry.ITEM,
+    public static final Item ORE_SENSOR = Registry.register(BuiltInRegistries.ITEM,
             new ResourceLocation(MODID, "ore_sensor"), new OreSensorItem(
-                    new Item.Properties().stacksTo(1).tab(CreativeModeTab.TAB_TOOLS)));
+                    new Item.Properties().stacksTo(1)));
 
     public static final MenuType<OreSensorMenu> ORE_SENSOR_MENU =
             ScreenHandlerRegistry.registerExtended(new ResourceLocation(MODID, "ore_sensor"),
@@ -34,6 +36,7 @@ public class OreSense implements ModInitializer {
     @Override
     public void onInitialize() {
         Config.load();
+        ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.TOOLS_AND_UTILITIES).register(entries -> entries.accept(ORE_SENSOR));
         OreSenseNetwork.register();
         ResourceManagerHelper.get(PackType.SERVER_DATA).registerReloadListener(new SampleAliases());
         ServerLifecycleEvents.START_DATA_PACK_RELOAD.register((server, resources) -> SampleResolver.invalidate());

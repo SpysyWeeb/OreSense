@@ -4,6 +4,7 @@ import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -13,7 +14,7 @@ public record KnownSamplesPacket(Set<Item> items, boolean anyBlock) {
 
     public static void encode(KnownSamplesPacket packet, FriendlyByteBuf buf) {
         buf.writeBoolean(packet.anyBlock);
-        buf.writeCollection(packet.items, (b, item) -> b.writeResourceLocation(Registry.ITEM.getKey(item)));
+        buf.writeCollection(packet.items, (b, item) -> b.writeResourceLocation(BuiltInRegistries.ITEM.getKey(item)));
     }
 
     /**
@@ -23,7 +24,7 @@ public record KnownSamplesPacket(Set<Item> items, boolean anyBlock) {
      */
     public static KnownSamplesPacket decode(FriendlyByteBuf buf) {
         boolean anyBlock = buf.readBoolean();
-        Set<Item> items = buf.readCollection(HashSet::new, b -> Registry.ITEM.get(b.readResourceLocation()));
+        Set<Item> items = buf.readCollection(HashSet::new, b -> BuiltInRegistries.ITEM.get(b.readResourceLocation()));
         items.remove(null);
         items.remove(Items.AIR);
         return new KnownSamplesPacket(items, anyBlock);

@@ -1,13 +1,10 @@
 package com.spysyweeb.oresense.client;
 
-import com.mojang.blaze3d.systems.RenderSystem;
-import com.mojang.blaze3d.vertex.PoseStack;
 import com.spysyweeb.oresense.OreSense;
 import com.spysyweeb.oresense.menu.OreSensorMenu;
+import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
-import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.Slot;
@@ -18,8 +15,8 @@ public class OreSensorScreen extends AbstractContainerScreen<OreSensorMenu> {
     private static final ResourceLocation TEXTURE = new ResourceLocation(OreSense.MODID, "textures/gui/ore_sensor.png");
     // each slot's name, left of it in vanilla's label style (AbstractContainerScreen.renderLabels
     // draws the title and "Inventory" in 0x404040 without a shadow)
-    private static final Component CHARGES_LABEL = new TranslatableComponent("oresense.gui.charges");
-    private static final Component SAMPLE_LABEL = new TranslatableComponent("oresense.gui.sample");
+    private static final Component CHARGES_LABEL = Component.translatable("oresense.gui.charges");
+    private static final Component SAMPLE_LABEL = Component.translatable("oresense.gui.sample");
     private static final int LABEL_COLOUR = 0x404040;
     private static final int LABEL_GAP = 4;       // px from a label's right end to its slot's frame
 
@@ -31,36 +28,33 @@ public class OreSensorScreen extends AbstractContainerScreen<OreSensorMenu> {
     }
 
     @Override
-    protected void renderBg(PoseStack pose, float partialTick, int mouseX, int mouseY) {
+    protected void renderBg(GuiGraphics g, float partialTick, int mouseX, int mouseY) {
         int x = (width - imageWidth) / 2;
         int y = (height - imageHeight) / 2;
-        RenderSystem.setShader(GameRenderer::getPositionTexShader);
-        RenderSystem.setShaderColor(1f, 1f, 1f, 1f);
-        RenderSystem.setShaderTexture(0, TEXTURE);
-        blit(pose, x, y, 0, 0, imageWidth, imageHeight);
+        g.blit(TEXTURE, x, y, 0, 0, imageWidth, imageHeight);
     }
 
     /** Runs with the pose already moved to the panel's top-left, like the title. */
     @Override
-    protected void renderLabels(PoseStack pose, int mouseX, int mouseY) {
-        super.renderLabels(pose, mouseX, mouseY);   // the title and "Inventory"
-        drawSlotLabel(pose, CHARGES_LABEL, menu.getSlot(OreSensorMenu.CHARGE_SLOT));
-        drawSlotLabel(pose, SAMPLE_LABEL, menu.getSlot(OreSensorMenu.SAMPLE_SLOT));
+    protected void renderLabels(GuiGraphics g, int mouseX, int mouseY) {
+        super.renderLabels(g, mouseX, mouseY);   // the title and "Inventory"
+        drawSlotLabel(g, CHARGES_LABEL, menu.getSlot(OreSensorMenu.CHARGE_SLOT));
+        drawSlotLabel(g, SAMPLE_LABEL, menu.getSlot(OreSensorMenu.SAMPLE_SLOT));
     }
 
     /**
      * Right-aligned to end LABEL_GAP px left of the slot's frame (which starts 1 px left of the
      * item), on the item's middle row: the charges label ends at x 47, the sample's at 135.
      */
-    private void drawSlotLabel(PoseStack pose, Component label, Slot slot) {
+    private void drawSlotLabel(GuiGraphics g, Component label, Slot slot) {
         int right = slot.x - 1 - LABEL_GAP;
-        font.draw(pose, label, right - font.width(label), slot.y + 4, LABEL_COLOUR);
+        g.drawString(font, label, right - font.width(label), slot.y + 4, LABEL_COLOUR, false);
     }
 
     @Override
-    public void render(PoseStack pose, int mouseX, int mouseY, float partialTick) {
-        renderBackground(pose);
-        super.render(pose, mouseX, mouseY, partialTick);
-        renderTooltip(pose, mouseX, mouseY);
+    public void render(GuiGraphics g, int mouseX, int mouseY, float partialTick) {
+        renderBackground(g);
+        super.render(g, mouseX, mouseY, partialTick);
+        renderTooltip(g, mouseX, mouseY);
     }
 }

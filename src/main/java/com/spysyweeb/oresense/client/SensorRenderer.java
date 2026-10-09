@@ -2,10 +2,10 @@ package com.spysyweeb.oresense.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.DefaultVertexFormat;
-import com.mojang.math.Matrix3f;
-import com.mojang.math.Matrix4f;
-import com.mojang.math.Vector3f;
-import com.mojang.math.Vector4f;
+import org.joml.Matrix3f;
+import org.joml.Matrix4f;
+import org.joml.Vector3f;
+import org.joml.Vector4f;
 import com.spysyweeb.oresense.OreSensorItem;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.fabricmc.fabric.api.client.rendering.v1.ColorProviderRegistry;
@@ -16,7 +16,7 @@ import net.minecraft.client.renderer.ItemBlockRenderTypes;
 import net.minecraft.client.renderer.LightTexture;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.block.model.BakedQuad;
-import net.minecraft.client.renderer.block.model.ItemTransforms.TransformType;
+import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.client.renderer.entity.ItemRenderer;
 import net.minecraft.client.resources.model.BakedModel;
 import net.minecraft.client.resources.model.ModelManager;
@@ -27,7 +27,7 @@ import net.minecraft.world.item.Items;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Random;
+import net.minecraft.util.RandomSource;
 
 /**
  * Draws the 16x16 dial as stacked layers (base, sonar ring, charge gauge, needle tail and tip, lit
@@ -96,7 +96,7 @@ public class SensorRenderer {
         return instance;
     }
 
-    public void renderByItem(ItemStack stack, TransformType context, PoseStack pose,
+    public void renderByItem(ItemStack stack, ItemDisplayContext context, PoseStack pose,
                              MultiBufferSource buffer, int light, int overlay) {
         Minecraft mc = Minecraft.getInstance();
         ModelManager models = mc.getModelManager();
@@ -174,7 +174,7 @@ public class SensorRenderer {
         if (flat) {
             drawFlatIcon(pose, buffer, sample, model, light, overlay);
         } else {
-            mc.getItemRenderer().renderStatic(null, sample, TransformType.GUI, false,
+            mc.getItemRenderer().renderStatic(null, sample, ItemDisplayContext.GUI, false,
                     pose, buffer, mc.level, light, overlay, 0);
         }
         pose.popPose();
@@ -234,13 +234,13 @@ public class SensorRenderer {
     private static void drawFlatIcon(PoseStack ps, MultiBufferSource buffer,
                                      ItemStack sample, BakedModel model, int light, int overlay) {
         PoseStack gui = new PoseStack();
-        model.getTransforms().getTransform(TransformType.GUI).apply(false, gui);
+        model.getTransforms().getTransform(ItemDisplayContext.GUI).apply(false, gui);
         Matrix4f place = gui.last().pose();
         Matrix3f turn = gui.last().normal();
 
         // the same quad lists, in the same order and with the same seed, as renderModelLists
         List<BakedQuad> quads = new ArrayList<>();
-        Random rand = new Random();
+        RandomSource rand = RandomSource.create();
         for (Direction side : Direction.values()) {
             rand.setSeed(42L);
             quads.addAll(model.getQuads(null, side, rand));
@@ -259,7 +259,7 @@ public class SensorRenderer {
         for (BakedQuad quad : quads) {
             Direction face = quad.getDirection();
             n.set(face.getStepX(), face.getStepY(), face.getStepZ());
-            n.transform(turn);
+            n.mul(turn);
             n.normalize();
             if (n.z() <= 0f) continue;                // faces away from the viewer
             // a face looking straight at the viewer (a flat item's front) is lit in full; the
@@ -278,7 +278,7 @@ public class SensorRenderer {
                         Float.intBitsToFloat(v[o + POSITION_OFFSET]) - 0.5f,
                         Float.intBitsToFloat(v[o + POSITION_OFFSET + 1]) - 0.5f,
                         Float.intBitsToFloat(v[o + POSITION_OFFSET + 2]) - 0.5f, 1f);
-                p.transform(place);
+                p.mul(place);
                 int c = v[o + COLOR_OFFSET];  // R,G,B,A bytes, R in the low byte
                 vc.vertex(dial.pose(), p.x(), p.y(), p.z() * DECAL_DEPTH)  // pressed onto the socket
                         .color(r * (c & 255) / 255f, g * (c >> 8 & 255) / 255f, b * (c >> 16 & 255) / 255f, 1f)
@@ -338,7 +338,7 @@ public class SensorRenderer {
     private static void drawLayer(PoseStack ps, VertexConsumer vc, BakedModel model,
                                   float r, float g, float b, float a, int light, int overlay) {
         PoseStack.Pose pose = ps.last();
-        Random rand = new Random(42L);
+        RandomSource rand = RandomSource.create(42L);
         for (Direction d : Direction.values())
             for (BakedQuad q : model.getQuads(null, d, rand)) drawQuad(pose, vc, q, r, g, b, a, light, overlay);
         for (BakedQuad q : model.getQuads(null, null, rand)) drawQuad(pose, vc, q, r, g, b, a, light, overlay);

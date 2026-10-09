@@ -13,7 +13,6 @@ import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.Tag;
 import net.minecraft.network.chat.Component;
-import net.minecraft.network.chat.TranslatableComponent;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvents;
@@ -41,10 +40,6 @@ import java.util.List;
 import java.util.Set;
 
 public class OreSensorItem extends Item {
-    // 1.17 has no amethyst resonance asset. Use its chime and compensate for the
-    // 0.2 volume in vanilla's sounds.json so lock/release keep their intended loudness.
-    private static final float AMETHYST_CHIME_VOLUME_SCALE = 5.0f;
-
     public static final String SAMPLE_TAG = "Sample";
     private static final String TARGET_TAG = "Target";      // [x,y,z]: the block the needle points at
     private static final String DIM_TAG = "TargetDim";
@@ -275,7 +270,7 @@ public class OreSensorItem extends Item {
 
                 @Override
                 public Component getDisplayName() {
-                    return new TranslatableComponent("container.oresense.ore_sensor");
+                    return Component.translatable("container.oresense.ore_sensor");
                 }
 
                 @Override
@@ -309,8 +304,8 @@ public class OreSensorItem extends Item {
             release(level, sensor, true, blocks, remaining, targets);
         }
         miss(sensor, level, Config.INSTANCE.horizontalRange.get());
-        player.playNotifySound(SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.PLAYERS,
-                0.8f * AMETHYST_CHIME_VOLUME_SCALE, 0.6f);
+        player.playNotifySound(SoundEvents.AMETHYST_BLOCK_RESONATE, SoundSource.PLAYERS,
+                0.8f, 0.6f);
     }
 
     // ---- server check ----
@@ -378,9 +373,9 @@ public class OreSensorItem extends Item {
         newLock.putBoolean(LOCK_PAID, false);
         tag.put(LOCK_TAG, newLock);
         hit(sensor, level, result.nearest(), result.nearestDistance(), hRange);
-        // Use the same chime as manual release, at a higher pitch for a new lock.
-        player.playNotifySound(SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.PLAYERS,
-                AMETHYST_CHIME_VOLUME_SCALE, 1.2f);
+        // Use the same resonance as manual release, at a higher pitch for a new lock.
+        player.playNotifySound(SoundEvents.AMETHYST_BLOCK_RESONATE, SoundSource.PLAYERS,
+                1.0f, 1.2f);
         showReading(player, center, result.nearest(), result.nearestDistance(), hRange, vein.size());
     }
 
@@ -519,7 +514,7 @@ public class OreSensorItem extends Item {
         BlockPos best = blocks.get(0);
         double bestSq = Double.MAX_VALUE;
         for (BlockPos pos : blocks) {
-            double dSq = pos.distSqr(center.getX() + 0.5, center.getY() + 0.5, center.getZ() + 0.5, true);
+            double dSq = pos.distToCenterSqr(center.getX() + 0.5, center.getY() + 0.5, center.getZ() + 0.5);
             if (dSq < bestSq) {
                 bestSq = dSq;
                 best = pos;
@@ -529,7 +524,7 @@ public class OreSensorItem extends Item {
     }
 
     private static double distance(BlockPos center, BlockPos pos) {
-        return Math.sqrt(pos.distSqr(center.getX() + 0.5, center.getY() + 0.5, center.getZ() + 0.5, true));
+        return Math.sqrt(pos.distToCenterSqr(center.getX() + 0.5, center.getY() + 0.5, center.getZ() + 0.5));
     }
 
     /** Inside the box a scan covers around the player's feet block. */
@@ -637,16 +632,16 @@ public class OreSensorItem extends Item {
     private static void showReading(ServerPlayer player, BlockPos center, BlockPos target, double distance,
                                     int range, int count) {
         if (!Config.INSTANCE.showActionBar.get()) return;
-        Component strength = new TranslatableComponent(Signal.strength(distance, range));
+        Component strength = Component.translatable(Signal.strength(distance, range));
         Component line;
         if (Config.INSTANCE.showDirection.get()) {
-            line = new TranslatableComponent("oresense.msg.reading_dir",
+            line = Component.translatable("oresense.msg.reading_dir",
                     strength,
-                    new TranslatableComponent(Signal.compass(center, target)),
-                    new TranslatableComponent(Signal.vertical(center, target)),
+                    Component.translatable(Signal.compass(center, target)),
+                    Component.translatable(Signal.vertical(center, target)),
                     count);
         } else {
-            line = new TranslatableComponent("oresense.msg.reading", strength, count);
+            line = Component.translatable("oresense.msg.reading", strength, count);
         }
         player.displayClientMessage(line.copy().withStyle(ChatFormatting.AQUA), true);
     }
@@ -655,13 +650,13 @@ public class OreSensorItem extends Item {
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
         ItemStack sample = getSample(stack);
         tooltip.add(sample.isEmpty()
-                ? new TranslatableComponent("oresense.tooltip.empty").withStyle(ChatFormatting.DARK_GRAY)
-                : new TranslatableComponent("oresense.tooltip.tuned", sample.getHoverName()).withStyle(ChatFormatting.AQUA));
+                ? Component.translatable("oresense.tooltip.empty").withStyle(ChatFormatting.DARK_GRAY)
+                : Component.translatable("oresense.tooltip.tuned", sample.getHoverName()).withStyle(ChatFormatting.AQUA));
         int charges = getCharges(stack);
         tooltip.add(charges > 0
-                ? new TranslatableComponent("oresense.tooltip.charges", charges, MAX_CHARGES).withStyle(ChatFormatting.LIGHT_PURPLE)
-                : new TranslatableComponent("oresense.tooltip.no_charge").withStyle(ChatFormatting.RED));
-        tooltip.add(new TranslatableComponent("oresense.tooltip.usage").withStyle(ChatFormatting.DARK_GRAY));
+                ? Component.translatable("oresense.tooltip.charges", charges, MAX_CHARGES).withStyle(ChatFormatting.LIGHT_PURPLE)
+                : Component.translatable("oresense.tooltip.no_charge").withStyle(ChatFormatting.RED));
+        tooltip.add(Component.translatable("oresense.tooltip.usage").withStyle(ChatFormatting.DARK_GRAY));
     }
 
     @Override
