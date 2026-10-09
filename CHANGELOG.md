@@ -2,7 +2,7 @@
 
 ## 1.0.2 — 2026-10-09
 
-- Added Minecraft 26.1.2 support with Fabric Loader and Fabric API.
+- Added Minecraft 26.1.2 support with Quilt Loader and Fabric API.
 - Updated to Java 25 and unobfuscated Minecraft builds.
 - Adapted the animated dial and flat sample display to the new rendering system.
 - Preserved stored samples and charge when upgrading worlds to the new item component format.
