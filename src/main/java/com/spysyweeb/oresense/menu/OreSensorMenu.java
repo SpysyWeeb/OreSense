@@ -4,7 +4,9 @@ import com.spysyweeb.oresense.OreSense;
 import com.spysyweeb.oresense.OreSensorItem;
 import net.minecraft.network.FriendlyByteBuf;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.tags.ItemTags;
+import net.minecraft.tags.TagKey;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
@@ -18,7 +20,7 @@ import net.minecraft.world.InteractionHand;
 
 public class OreSensorMenu extends AbstractContainerMenu {
     // Our tag includes vanilla amethyst and optional common/modded equivalents.
-    private static final ResourceLocation AMETHYST_TAG = new ResourceLocation(OreSense.MODID, "amethyst");
+    private static final TagKey<Item> AMETHYST_TAG = TagKey.create(Registries.ITEM, new ResourceLocation(OreSense.MODID, "amethyst"));
     /**
      * Menu slots: the sample, the charges, then inventory 9..35 and hotbar 0..8. On screen the
      * charges sit on the left and the sample on the right, each with a label (OreSensorScreen);
@@ -57,7 +59,7 @@ public class OreSensorMenu extends AbstractContainerMenu {
         this.charges.setItem(0, stored > 0 ? new ItemStack(Items.AMETHYST_SHARD, stored) : ItemStack.EMPTY);
 
         addSlot(new Slot(sample, 0, 140, 20) {
-            @Override public boolean mayPlace(ItemStack stack) { return OreSensorItem.isValidSample(player.level, stack); }
+            @Override public boolean mayPlace(ItemStack stack) { return OreSensorItem.isValidSample(player.level(), stack); }
             @Override public int getMaxStackSize() { return 1; }
             @Override public void setChanged() { super.setChanged(); save(); }
         });
@@ -75,7 +77,7 @@ public class OreSensorMenu extends AbstractContainerMenu {
     }
 
     private static boolean isCharge(ItemStack stack) {
-        return stack.is(ItemTags.getAllTags().getTagOrEmpty(AMETHYST_TAG));
+        return stack.is(AMETHYST_TAG);
     }
 
     private void save() {
@@ -124,7 +126,7 @@ public class OreSensorMenu extends AbstractContainerMenu {
         } else if (isCharge(stack)) {                                 // inventory -> charges
             if (!moveItemStackTo(stack, CHARGE_SLOT, CHARGE_SLOT + 1, false)) return ItemStack.EMPTY;
         } else {                                                      // inventory -> sample
-            if (!OreSensorItem.isValidSample(player.level, stack)) return ItemStack.EMPTY;
+            if (!OreSensorItem.isValidSample(player.level(), stack)) return ItemStack.EMPTY;
             if (!moveItemStackTo(stack, SAMPLE_SLOT, SAMPLE_SLOT + 1, false)) return ItemStack.EMPTY;
         }
         if (stack.isEmpty()) slot.set(ItemStack.EMPTY); else slot.setChanged();
@@ -139,7 +141,7 @@ public class OreSensorMenu extends AbstractContainerMenu {
         saveCharges();
         super.removed(p);
         // hand the sample back if the player closes with something in the slot we could not store
-        if (!p.level.isClientSide && !sample.getItem(0).isEmpty() && OreSensorItem.getSample(sensor).isEmpty()) {
+        if (!p.level().isClientSide && !sample.getItem(0).isEmpty() && OreSensorItem.getSample(sensor).isEmpty()) {
             p.drop(sample.getItem(0), false);
         }
     }

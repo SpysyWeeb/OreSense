@@ -11,9 +11,9 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 @Mixin(MultiPlayerGameMode.class)
 public abstract class MultiPlayerGameModeMixin {
     @Redirect(method = "sameDestroyTarget", at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/world/item/ItemStack;tagMatches(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/item/ItemStack;)Z"))
+            target = "Lnet/minecraft/world/item/ItemStack;isSameItemSameTags(Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/item/ItemStack;)Z"))
     private boolean oresense$ignoreReadingChanges(ItemStack first, ItemStack second) {
         if (first.getItem() instanceof OreSensorItem && first.getItem() == second.getItem()) return true;
-        return ItemStack.tagMatches(first, second);
+        return ItemStack.isSameItemSameTags(first, second);
     }
 }

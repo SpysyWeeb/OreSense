@@ -14,7 +14,7 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
-import net.minecraft.core.Registry;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.fabricmc.fabric.api.resource.IdentifiableResourceReloadListener;
 import com.spysyweeb.oresense.OreSense;
 import org.apache.logging.log4j.Logger;
@@ -106,8 +106,8 @@ public final class SampleAliases extends SimpleJsonResourceReloadListener implem
     @Nullable
     private static Item item(String id) {
         ResourceLocation location = ResourceLocation.tryParse(id);
-        if (location == null || !Registry.ITEM.containsKey(location)) return null;
-        Item item = Registry.ITEM.get(location);
+        if (location == null || !BuiltInRegistries.ITEM.containsKey(location)) return null;
+        Item item = BuiltInRegistries.ITEM.get(location);
         return item == Items.AIR ? null : item;
     }
 
@@ -115,8 +115,8 @@ public final class SampleAliases extends SimpleJsonResourceReloadListener implem
     @Nullable
     private static Block block(String id) {
         ResourceLocation location = ResourceLocation.tryParse(id);
-        if (location == null || !Registry.BLOCK.containsKey(location)) return null;
-        Block block = Registry.BLOCK.get(location);
+        if (location == null || !BuiltInRegistries.BLOCK.containsKey(location)) return null;
+        Block block = BuiltInRegistries.BLOCK.get(location);
         return block == Blocks.AIR ? null : block;
     }
 }
