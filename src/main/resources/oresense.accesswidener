@@ -1,9 +1,7 @@
-accessWidener v2 named
+accessWidener v2 official
 accessible field net/minecraft/client/renderer/item/ItemModels ID_MAPPER Lnet/minecraft/util/ExtraCodecs$LateBoundIdMapper;
 accessible field net/minecraft/client/renderer/item/ItemStackRenderState activeLayerCount I
 accessible field net/minecraft/client/renderer/item/ItemStackRenderState layers [Lnet/minecraft/client/renderer/item/ItemStackRenderState$LayerRenderState;
-accessible field net/minecraft/client/renderer/item/ItemStackRenderState$LayerRenderState renderType Lnet/minecraft/client/renderer/rendertype/RenderType;
-accessible field net/minecraft/client/renderer/item/ItemStackRenderState$LayerRenderState tintLayers [I
 accessible field net/minecraft/client/renderer/item/ItemStackRenderState$LayerRenderState specialRenderer Lnet/minecraft/client/renderer/special/SpecialModelRenderer;
 accessible field net/minecraft/client/renderer/item/ItemStackRenderState$LayerRenderState quads Ljava/util/List;
-accessible field net/minecraft/client/renderer/item/ItemStackRenderState$LayerRenderState transform Lnet/minecraft/client/renderer/block/model/ItemTransform;
+accessible method net/minecraft/client/renderer/item/ItemStackRenderState$LayerRenderState applyTransform (Lcom/mojang/blaze3d/vertex/PoseStack$Pose;)V
