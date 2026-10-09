@@ -18,7 +18,7 @@ public final class OreSenseNetwork {
      * lacks a mod the client brings), and a server with the mod refuses a client without it.
      */
     public static final SimpleChannel CHANNEL = ChannelBuilder
-            .named(new ResourceLocation(OreSense.MODID, "main"))
+            .named(ResourceLocation.fromNamespaceAndPath(OreSense.MODID, "main"))
             .networkProtocolVersion(PROTOCOL)
             .simpleChannel();
 
