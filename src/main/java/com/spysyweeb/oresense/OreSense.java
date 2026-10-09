@@ -13,7 +13,7 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.extensions.IForgeMenuType;
 import net.minecraftforge.event.AddReloadListenerEvent;
-import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
+import net.minecraftforge.event.CreativeModeTabEvent;
 import net.minecraftforge.event.OnDatapackSyncEvent;
 import net.minecraftforge.event.level.BlockEvent;
 import net.minecraftforge.eventbus.api.EventPriority;
@@ -85,14 +85,18 @@ public class OreSense {
      * client too instead of snapping back. Forge fires this for one player as they join
      * (PlayerList.placeNewPlayer, before they can open anything) and for everyone after a
      * /reload has swapped in and re-tagged the new data (PlayerList.reloadResources); in both
-     * cases getPlayers() is the right list. The first join after start builds the resolver's
+     * cases we send to the joining player or, for a reload, everyone. The first join builds the resolver's
      * map on the server thread, which the first scan used to do.
      */
     private void syncSamples(OnDatapackSyncEvent event) {
         KnownSamplesPacket packet = new KnownSamplesPacket(
                 SampleResolver.knownSamples(event.getPlayerList().getServer().overworld()),
                 !Config.INSTANCE.oresOnly.get());
-        for (ServerPlayer player : event.getPlayers()) {
+        if (event.getPlayer() != null) {
+            OreSenseNetwork.send(event.getPlayer(), packet);
+            return;
+        }
+        for (ServerPlayer player : event.getPlayerList().getPlayers()) {
             OreSenseNetwork.send(player, packet);
         }
     }
@@ -102,8 +106,8 @@ public class OreSense {
      * registry sync leaves ORE_SENSOR absent for the session, so an unconditional get() throws
      * and Forge reports a mod loading error (seen in the Mine instance log on 2026-09-23).
      */
-    private void addCreative(BuildCreativeModeTabContentsEvent event) {
-        if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES && ORE_SENSOR.isPresent()) {
+    private void addCreative(CreativeModeTabEvent.BuildContents event) {
+        if (event.getTab() == CreativeModeTabs.TOOLS_AND_UTILITIES && ORE_SENSOR.isPresent()) {
             event.accept(ORE_SENSOR.get());
         }
     }

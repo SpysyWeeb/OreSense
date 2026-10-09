@@ -54,7 +54,7 @@ public class OreSensorMenu extends AbstractContainerMenu {
         this.charges.setItem(0, stored > 0 ? new ItemStack(Items.AMETHYST_SHARD, stored) : ItemStack.EMPTY);
 
         addSlot(new Slot(sample, 0, 140, 20) {
-            @Override public boolean mayPlace(ItemStack stack) { return OreSensorItem.isValidSample(player.level(), stack); }
+            @Override public boolean mayPlace(ItemStack stack) { return OreSensorItem.isValidSample(player.level, stack); }
             @Override public int getMaxStackSize() { return 1; }
             @Override public void setChanged() { super.setChanged(); save(); }
         });
@@ -121,7 +121,7 @@ public class OreSensorMenu extends AbstractContainerMenu {
         } else if (isCharge(stack)) {                                 // inventory -> charges
             if (!moveItemStackTo(stack, CHARGE_SLOT, CHARGE_SLOT + 1, false)) return ItemStack.EMPTY;
         } else {                                                      // inventory -> sample
-            if (!OreSensorItem.isValidSample(player.level(), stack)) return ItemStack.EMPTY;
+            if (!OreSensorItem.isValidSample(player.level, stack)) return ItemStack.EMPTY;
             if (!moveItemStackTo(stack, SAMPLE_SLOT, SAMPLE_SLOT + 1, false)) return ItemStack.EMPTY;
         }
         if (stack.isEmpty()) slot.set(ItemStack.EMPTY); else slot.setChanged();
@@ -136,7 +136,7 @@ public class OreSensorMenu extends AbstractContainerMenu {
         saveCharges();
         super.removed(p);
         // hand the sample back if the player closes with something in the slot we could not store
-        if (!p.level().isClientSide && !sample.getItem(0).isEmpty() && OreSensorItem.getSample(sensor).isEmpty()) {
+        if (!p.level.isClientSide && !sample.getItem(0).isEmpty() && OreSensorItem.getSample(sensor).isEmpty()) {
             p.drop(sample.getItem(0), false);
         }
     }

@@ -14,7 +14,7 @@ import net.minecraft.world.item.crafting.RecipeManager;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraft.world.level.storage.loot.LootParams;
+import net.minecraft.world.level.storage.loot.LootContext;
 import net.minecraft.world.level.storage.loot.parameters.LootContextParams;
 import net.minecraft.world.phys.Vec3;
 import net.minecraftforge.common.Tags;
@@ -106,7 +106,7 @@ public final class SampleResolver {
         // seed: each ore block's own item, and everything the ore drops, stand for that ore
         Map<Item, Set<Block>> map = new HashMap<>();
         Map<Block, Set<Item>> oreDrops = new HashMap<>();
-        LootParams.Builder params = new LootParams.Builder(level)
+        LootContext.Builder params = new LootContext.Builder(level)
                 .withParameter(LootContextParams.ORIGIN, Vec3.atCenterOf(BlockPos.ZERO))
                 .withParameter(LootContextParams.TOOL, new ItemStack(Items.NETHERITE_PICKAXE));
 
