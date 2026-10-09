@@ -2,10 +2,10 @@
 
 ## 1.0.1 — 2026-10-08
 
-- Added Minecraft 1.17 support with Fabric Loader and Fabric API.
+- Added Minecraft 1.18.1 support with Fabric Loader and Fabric API.
 - Added Fabric registration, rendering, menus, networking, and configuration.
 - Included all vanilla ores, plus Fabric common and Forge ore/ingredient tag compatibility.
-- Lock and release cues use the amethyst chime available in Minecraft 1.17.
+- Lock and release cues use the amethyst chime available in Minecraft 1.18.1.
 - The charge gauge now shows stored amethyst even when the ore sample slot is empty or the sensor is
   dormant. Adding or removing a sample no longer hides the charge level.
 - Filled charge pixels pulse slowly between 75% and full brightness.
