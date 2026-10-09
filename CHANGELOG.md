@@ -2,6 +2,8 @@
 
 ## 1.0.2 — 2026-10-09
 
+- Added Minecraft 1.20.3 support with Fabric Loader and Fabric API.
+
 - Renamed the sensor menu's Ore slot to Sample to reflect that it also accepts ore drops and items made
   from them.
 - Updated the empty sensor tooltip and instructions to use the same sample terminology.
