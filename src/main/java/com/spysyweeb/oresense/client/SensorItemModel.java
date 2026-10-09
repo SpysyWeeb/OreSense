@@ -25,6 +25,7 @@ public record SensorItemModel(ModelRenderProperties properties, SensorRenderer r
     @Override
     public void update(ItemStackRenderState state, ItemStack stack, ItemModelResolver resolver,
                        ItemDisplayContext context, ClientLevel level, LivingEntity owner, int seed) {
+        state.setAnimated();
         SensorClient.Reading reading = SensorClient.read(stack, context);
         ItemStackRenderState sample = new ItemStackRenderState();
         // Never recurse through another sensor saved as a sample by a datapack or command.
@@ -34,7 +35,11 @@ public record SensorItemModel(ModelRenderProperties properties, SensorRenderer r
         ItemStackRenderState.LayerRenderState layer = state.newLayer();
         layer.setupSpecialModel(renderer, new Snapshot(reading, sample));
         properties.applyToLayer(layer, context);
-        layer.setExtents(() -> new org.joml.Vector3f[] {new org.joml.Vector3f(0, 0, 7.5f / 16f), new org.joml.Vector3f(1, 1, 0.56f)});
+        layer.setExtents(() -> {
+            java.util.Set<org.joml.Vector3f> extents = new java.util.HashSet<>();
+            renderer.getExtents(extents);
+            return extents.toArray(org.joml.Vector3f[]::new);
+        });
     }
 
     public record Unbaked() implements ItemModel.Unbaked {

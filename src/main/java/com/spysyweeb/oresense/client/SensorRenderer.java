@@ -41,6 +41,12 @@ public class SensorRenderer implements SpecialModelRenderer<SensorItemModel.Snap
     private static final int POSITION_OFFSET = 0;
     private static final int COLOR_OFFSET = 3;
     private static final int UV_OFFSET = 4;
+    @Override
+    public void getExtents(java.util.Set<Vector3f> extents) {
+        for (float x : new float[] {0f, 1f}) for (float y : new float[] {0f, 1f})
+            for (float z : new float[] {7.5f / 16f, 0.56f}) extents.add(new Vector3f(x, y, z));
+    }
+
     // locked needle glow: one pulse per PULSE_NEAR_MS on the target, PULSE_NEAR_MS + PULSE_FAR_MS
     // at the edge of the scan range, linear in between
     private static final double PULSE_NEAR_MS = 350.0;
