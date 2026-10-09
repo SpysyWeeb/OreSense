@@ -34,7 +34,7 @@ public class OreSense {
             DeferredRegister.create(ForgeRegistries.MENU_TYPES, MODID);
 
     public static final RegistryObject<Item> ORE_SENSOR =
-            ITEMS.register("ore_sensor", () -> new OreSensorItem(new Item.Properties().stacksTo(1)));
+            ITEMS.register("ore_sensor", () -> new OreSensorItem(new Item.Properties().setId(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.ITEM, net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(MODID, "ore_sensor"))).stacksTo(1)));
 
     public static final RegistryObject<MenuType<OreSensorMenu>> ORE_SENSOR_MENU =
             MENUS.register("ore_sensor", () -> IForgeMenuType.create(OreSensorMenu::fromNetwork));
@@ -47,6 +47,8 @@ public class OreSense {
         net.minecraftforge.fml.ModLoadingContext.get().registerConfig(
                 net.minecraftforge.fml.config.ModConfig.Type.COMMON, Config.SPEC);
         OreSenseNetwork.register();
+        net.minecraftforge.fml.DistExecutor.unsafeRunWhenOn(net.minecraftforge.api.distmarker.Dist.CLIENT,
+                () -> com.spysyweeb.oresense.client.SensorClient::registerItemModelType);
         MinecraftForge.EVENT_BUS.addListener(this::reloadSamples);
         MinecraftForge.EVENT_BUS.addListener(this::syncSamples);
         // lowest priority, and never for a cancelled break: every mod that may refuse the break
