@@ -1,5 +1,9 @@
 # Changelog
 
+## NeoForge 1.20.3
+
+- Added NeoForge 20.3.8-beta support for Minecraft 1.20.3.
+
 ## 1.0.2 — 2026-10-09
 
 - Added support for Minecraft 1.20.3 with Forge 49.0.2.

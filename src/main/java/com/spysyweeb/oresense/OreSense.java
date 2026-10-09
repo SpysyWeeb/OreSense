@@ -10,48 +10,48 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.inventory.MenuType;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.extensions.IForgeMenuType;
-import net.minecraftforge.event.AddReloadListenerEvent;
-import net.minecraftforge.event.BuildCreativeModeTabContentsEvent;
-import net.minecraftforge.event.OnDatapackSyncEvent;
-import net.minecraftforge.event.level.BlockEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.common.extensions.IMenuTypeExtension;
+import net.neoforged.neoforge.event.AddReloadListenerEvent;
+import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
+import net.neoforged.neoforge.event.OnDatapackSyncEvent;
+import net.neoforged.neoforge.event.level.BlockEvent;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.fml.common.Mod;
+import net.neoforged.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.neoforged.neoforge.registries.DeferredRegister;
+import net.minecraft.core.registries.BuiltInRegistries;
+import net.neoforged.neoforge.registries.DeferredHolder;
 
 @Mod(OreSense.MODID)
 public class OreSense {
     public static final String MODID = "oresense";
 
     public static final DeferredRegister<Item> ITEMS =
-            DeferredRegister.create(ForgeRegistries.ITEMS, MODID);
+            DeferredRegister.create(BuiltInRegistries.ITEM, MODID);
     public static final DeferredRegister<MenuType<?>> MENUS =
-            DeferredRegister.create(ForgeRegistries.MENU_TYPES, MODID);
+            DeferredRegister.create(BuiltInRegistries.MENU, MODID);
 
-    public static final RegistryObject<Item> ORE_SENSOR =
+    public static final DeferredHolder<Item, Item> ORE_SENSOR =
             ITEMS.register("ore_sensor", () -> new OreSensorItem(new Item.Properties().stacksTo(1)));
 
-    public static final RegistryObject<MenuType<OreSensorMenu>> ORE_SENSOR_MENU =
-            MENUS.register("ore_sensor", () -> IForgeMenuType.create(OreSensorMenu::fromNetwork));
+    public static final DeferredHolder<MenuType<?>, MenuType<OreSensorMenu>> ORE_SENSOR_MENU =
+            MENUS.register("ore_sensor", () -> IMenuTypeExtension.create(OreSensorMenu::fromNetwork));
 
     public OreSense() {
         IEventBus bus = FMLJavaModLoadingContext.get().getModEventBus();
         ITEMS.register(bus);
         MENUS.register(bus);
         bus.addListener(this::addCreative);
-        net.minecraftforge.fml.ModLoadingContext.get().registerConfig(
-                net.minecraftforge.fml.config.ModConfig.Type.COMMON, Config.SPEC);
+        net.neoforged.fml.ModLoadingContext.get().registerConfig(
+                net.neoforged.fml.config.ModConfig.Type.COMMON, Config.SPEC);
         OreSenseNetwork.register();
-        MinecraftForge.EVENT_BUS.addListener(this::reloadSamples);
-        MinecraftForge.EVENT_BUS.addListener(this::syncSamples);
+        NeoForge.EVENT_BUS.addListener(this::reloadSamples);
+        NeoForge.EVENT_BUS.addListener(this::syncSamples);
         // lowest priority, and never for a cancelled break: every mod that may refuse the break
         // (claims, spawn protection, adventure mode) has had its say before a charge is spent
-        MinecraftForge.EVENT_BUS.addListener(EventPriority.LOWEST, false, BlockEvent.BreakEvent.class, this::spendCharge);
+        NeoForge.EVENT_BUS.addListener(EventPriority.LOWEST, false, BlockEvent.BreakEvent.class, this::spendCharge);
     }
 
     /**
@@ -107,7 +107,7 @@ public class OreSense {
      * and Forge reports a mod loading error (seen in the Mine instance log on 2026-09-23).
      */
     private void addCreative(BuildCreativeModeTabContentsEvent event) {
-        if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES && ORE_SENSOR.isPresent()) {
+        if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES && ORE_SENSOR.isBound()) {
             event.accept(ORE_SENSOR.get());
         }
     }
