@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.1 — Unreleased
+## 1.0.1 — 2026-10-08
 
 - The charge gauge now shows stored amethyst even when the ore sample slot is empty or the sensor is
   dormant. Adding or removing a sample no longer hides the charge level.
