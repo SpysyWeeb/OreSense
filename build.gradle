@@ -201,3 +201,8 @@ sourceSets.each {
     it.output.resourcesDir = dir
     it.java.destinationDirectory = dir
 }
+
+// MIT asks that the notice accompany copies; ship it in the jar like the Fabric builds do.
+tasks.named('jar', Jar).configure {
+    from(rootProject.file('LICENSE')) { rename { "${it}_${mod_id}" } }
+}
