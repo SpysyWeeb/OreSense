@@ -82,17 +82,25 @@ public class OreSense {
 
     /**
      * Tells clients which items the sample slot takes, so the slot can refuse the rest on the
-     * client too instead of snapping back. Forge fires this for one player as they join
-     * (PlayerList.placeNewPlayer, before they can open anything) and for everyone after a
-     * /reload has swapped in and re-tagged the new data (PlayerList.reloadResources); in both
-     * cases getPlayers() is the right list. The first join after start builds the resolver's
-     * map on the server thread, which the first scan used to do.
+     * client too instead of snapping back. Forge fires this once for a joining player
+     * (PlayerList.placeNewPlayer, before they can open anything) with that player in
+     * getPlayer(); they are not in the player list yet, so getPlayer() is the only way to reach
+     * them. After a /reload has swapped in and re-tagged the new data
+     * (PlayerList.reloadResources) it fires once with no player, and the packet goes to everyone
+     * in the player list. OnDatapackSyncEvent.getPlayers(), which would cover both, only exists
+     * from Forge 47.3.0 and never on NeoForge 1.20.1, so it must not be called here. The first
+     * join after start builds the resolver's map on the server thread, which the first scan used
+     * to do.
      */
     private void syncSamples(OnDatapackSyncEvent event) {
         KnownSamplesPacket packet = new KnownSamplesPacket(
                 SampleResolver.knownSamples(event.getPlayerList().getServer().overworld()),
                 !Config.INSTANCE.oresOnly.get());
-        for (ServerPlayer player : event.getPlayers()) {
+        if (event.getPlayer() != null) {
+            OreSenseNetwork.send(event.getPlayer(), packet);
+            return;
+        }
+        for (ServerPlayer player : event.getPlayerList().getPlayers()) {
             OreSenseNetwork.send(player, packet);
         }
     }

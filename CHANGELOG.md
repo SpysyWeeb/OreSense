@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.3 — 2026-10-17
+
+- Fixed a crash on the first player join on Forge 47.0–47.2: the sample-list sync used an API that Forge only added in 47.3. The jar now declares the exact Forge and Minecraft versions it supports.
+- With `oresOnly` off, storage blocks, raw-ore blocks and cut copper now find their ore as well as themselves; previously they stood only for themselves.
+- The MIT licence file is now bundled in the jar, as it already was in the Fabric and Quilt builds.
+- Removed a stray Python cache file from the repository.
+
 ## 1.0.2 — 2026-10-09
 
 - Renamed the sensor menu's Ore slot to Sample to reflect that it also accepts ore drops and items made

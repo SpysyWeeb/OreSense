@@ -6,13 +6,13 @@ Tune it with a sample, load it with amethyst shards, and follow the needle to th
 OreSense adds one item, the **Ore Sensor**. It is a compass-style dial with a red needle, two indicator
 lamps for ore above or below you, a charge gauge, and a window that shows what you are looking for.
 
-**Current mod version: 1.0.2** · [CurseForge downloads](https://www.curseforge.com/minecraft/mc-mods/oresense/files)
+**Current mod version: 1.0.3** · [CurseForge downloads](https://www.curseforge.com/minecraft/mc-mods/oresense/files)
 · [GitHub releases](https://github.com/SpysyWeeb/OreSense/releases)
 · [Report an issue](https://github.com/SpysyWeeb/OreSense/issues)
 
 ## Supported versions
 
-OreSense 1.0.2 has **122 published builds** covering all **34 stable Minecraft releases from 1.17 through
+OreSense 1.0.3 has **122 published builds** covering all **34 stable Minecraft releases from 1.17 through
 26.3**, wherever each loader is available. Each Minecraft version and loader has its own build.
 
 | Loader | Minecraft coverage | Builds |
@@ -154,7 +154,7 @@ The default branch, **`Forge-1.20.1`**, contains the Forge 1.20.1 source. Other 
 such as `Fabric-26.3`, `Quilt-1.17`, and `NeoForge-1.21.1`.
 
 Release tags include the mod version, loader, and Minecraft version:
-`v<mod version>-<loader>-<Minecraft version>`, for example `v1.0.2-quilt-26.3`.
+`v<mod version>-<loader>-<Minecraft version>`, for example `v1.0.3-quilt-26.3`.
 Each GitHub release includes its compiled mod JAR.
 
 Use **JDK 17** to build Minecraft 1.17–1.20.4 branches, **JDK 21** for 1.20.5–1.21.11, and **JDK 25** for
