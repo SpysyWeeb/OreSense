@@ -66,14 +66,20 @@ public final class SampleResolver {
 
     private static Set<Block> resolveOres(ServerLevel level, ItemStack sample) {
         // a block used directly as the sample: an ore stands for itself and every ore that drops
-        // what it drops; any other block stands for itself only when the oresOnly config is off
+        // what it drops. Any other block stands for the ores it is made from, as any item does;
+        // with the oresOnly config off it also stands for itself, so a storage block, raw-ore
+        // block or cut copper finds its ore as well as itself
         if (sample.getItem() instanceof BlockItem blockItem) {
             Block block = blockItem.getBlock();
             if (block.defaultBlockState().is(ORE_TAG)) {
                 return byProduct(level).getOrDefault(sample.getItem(), Set.of(block));
             }
             if (!com.spysyweeb.oresense.Config.INSTANCE.oresOnly.get()) {
-                return Set.of(block);
+                Set<Block> ores = byProduct(level).get(sample.getItem());
+                if (ores == null) return Set.of(block);
+                Set<Block> withBlock = new HashSet<>(ores);
+                withBlock.add(block);
+                return Set.copyOf(withBlock);
             }
         }
 
