@@ -24,3 +24,8 @@ tasks.named('processResources', ProcessResources).configure {
 }
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
 publishing { publications { register('mavenJava', MavenPublication) { from components.java } } }
+
+// MIT asks that the notice accompany copies; ship it in the jar like the Fabric builds do.
+tasks.named('jar', Jar).configure {
+    from(rootProject.file('LICENSE')) { rename { "${it}_${mod_id}" } }
+}
