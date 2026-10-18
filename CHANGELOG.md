@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.3 — 2026-10-17
+
+- With `oresOnly` off, storage blocks, raw-ore blocks and cut copper now find their ore as well as themselves; previously they stood only for themselves.
+- Removed a stray Python cache file from the repository.
+
 ## 1.0.2 — 2026-10-09
 
 - Added Minecraft 1.19.2 support with Quilt Loader 0.30.1 and Fabric API.
