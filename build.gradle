@@ -205,3 +205,8 @@ publishing {
 tasks.withType(JavaCompile).configureEach {
     options.encoding = 'UTF-8' // Use the UTF-8 charset for Java compilation
 }
+
+// MIT asks that the notice accompany copies; ship it in the jar like the Fabric builds do.
+tasks.named('jar', Jar).configure {
+    from(rootProject.file('LICENSE')) { rename { "${it}_${mod_id}" } }
+}
