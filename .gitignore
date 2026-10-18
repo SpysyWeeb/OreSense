@@ -20,3 +20,7 @@ eclipse/
 run/
 run-data/
 logs/
+
+# python
+__pycache__/
+*.py[cod]
