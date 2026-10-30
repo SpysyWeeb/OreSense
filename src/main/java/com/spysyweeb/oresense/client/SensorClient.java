@@ -3,26 +3,35 @@ package com.spysyweeb.oresense.client;
 import com.spysyweeb.oresense.Config;
 import com.spysyweeb.oresense.OreSense;
 import com.spysyweeb.oresense.OreSensorItem;
+import com.spysyweeb.oresense.client.skin.Skins;
 import com.spysyweeb.oresense.scan.Signal;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.screens.MenuScreens;
+import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
-import java.util.ArrayList;
-import java.util.List;
 import net.minecraft.client.renderer.item.ItemModels;
-import net.minecraft.core.BlockPos;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.BlockPos;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.contents.TranslatableContents;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.ModelEvent;
+import net.minecraftforge.client.ConfigScreenHandler;
+import net.minecraftforge.event.entity.player.ItemTooltipEvent;
 import net.minecraftforge.eventbus.api.SubscribeEvent;
+import net.minecraftforge.fml.ModLoadingContext;
 import net.minecraftforge.fml.common.Mod;
+import net.minecraftforge.fml.config.ModConfig;
+import net.minecraftforge.fml.event.config.ModConfigEvent;
 import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
 
-import java.util.Locale;
+import java.util.List;
+import java.util.Set;
 
 @Mod.EventBusSubscriber(modid = OreSense.MODID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public class SensorClient {
@@ -32,22 +41,11 @@ public class SensorClient {
     /** Needle frames: frame i points 11.25 degrees * i clockwise from straight up, like the vanilla compass. */
     public static final int NEEDLE_FRAMES = 32;
 
-    public static final ResourceLocation BASE = layer("ore_sensor_base");
-    /** The lit lamps in the rim: 12 o'clock = the target is above, 6 o'clock = below. */
-    public static final ResourceLocation LAMP_UP = layer("ore_sensor_lamp_up");
-    public static final ResourceLocation LAMP_DOWN = layer("ore_sensor_lamp_down");
-    /** NO_CHARGE: the four gauge cells in red. */
-    public static final ResourceLocation EMPTY = layer("ore_sensor_empty");
-    private static final ResourceLocation[] NEEDLE = numbered("ore_sensor_needle_", NEEDLE_FRAMES);
-    private static final ResourceLocation[] TAIL = numbered("ore_sensor_tail_", NEEDLE_FRAMES);
-    private static final ResourceLocation[] SONAR = numbered("ore_sensor_sonar_", SONAR_RINGS);
-    private static final ResourceLocation[] CHARGE = numbered("ore_sensor_charge_", CHARGE_CELLS);
-
     /**
      * DORMANT: no sample, nobody is scanning with it, or it is not in the local player's view
      * (dropped, in an item frame, on a head). SEARCHING: being scanned, nothing found.
      * NO_CHARGE: being scanned, ore found, but the server would not lock on because the sensor
-     * holds no amethyst (its NoCharge flag; the client never decides this from Charges).
+     * cannot pay the lock price (its NoCharge flag; the client never decides this from Charges).
      * LOCKED: being scanned and pointing at a block of the locked vein in this dimension.
      */
     public enum State { DORMANT, SEARCHING, NO_CHARGE, LOCKED }
@@ -72,45 +70,88 @@ public class SensorClient {
     private static double rotation = 0.0, prevRotation = 0.0, delta = 0.0;
     private static long lastTick = 0;
 
-    public static ResourceLocation needle(int frame) {
-        return NEEDLE[frame];
+    /**
+     * The client half of the mod constructor; OreSense calls it on the client only, while the mod
+     * container is active. The display settings get their own CLIENT config file, the mod list's
+     * Config button opens the settings screen through ConfigScreenHandler.ConfigScreenFactory
+     * registered by ModLoadingContext.registerExtensionPoint, and the sensor's tooltip shows its details
+     * while Shift is held.
+     */
+    public static void init() {
+        ModLoadingContext context = ModLoadingContext.get();
+        context.registerConfig(ModConfig.Type.CLIENT, ClientConfig.SPEC, "oresense-client.toml");
+        context.registerExtensionPoint(ConfigScreenHandler.ConfigScreenFactory.class,
+                () -> new ConfigScreenHandler.ConfigScreenFactory((minecraft, parent) -> new OreSenseSettingsScreen(parent)));
+        OreSensorItem.moreInfoHeld = Screen::hasShiftDown;
+        registerItemModelType();
     }
 
-    public static ResourceLocation tail(int frame) {
-        return TAIL[frame];
+    // The settings screen edits both loaded files in memory (Config.LIVE, ClientConfig.LIVE), so
+    // each keeps track of its ModConfig. Only the client's screen uses them, so only the client
+    // listens. Reloading arrives on FML's file-watcher thread.
+    @SubscribeEvent
+    public static void onConfigLoading(ModConfigEvent.Loading event) {
+        Config.LIVE.onConfigEvent(event);
+        ClientConfig.LIVE.onConfigEvent(event);
     }
 
-    public static ResourceLocation sonar(int ring) {
-        return SONAR[ring];
+    @SubscribeEvent
+    public static void onConfigReloading(ModConfigEvent.Reloading event) {
+        Config.LIVE.onConfigEvent(event);
+        ClientConfig.LIVE.onConfigEvent(event);
     }
 
-    public static ResourceLocation charge(int cell) {
-        return CHARGE[cell];
+    @SubscribeEvent
+    public static void onConfigUnloading(ModConfigEvent.Unloading event) {
+        Config.LIVE.onConfigEvent(event);
+        ClientConfig.LIVE.onConfigEvent(event);
     }
 
-    private static ResourceLocation layer(String name) {
-        // Additional models use their full model-file path in Minecraft 1.21.
-        return ResourceLocation.fromNamespaceAndPath(OreSense.MODID, "item/" + name);
-    }
-
-    private static ResourceLocation[] numbered(String prefix, int count) {
-        ResourceLocation[] models = new ResourceLocation[count];
-        for (int i = 0; i < count; i++) models[i] = layer(String.format(Locale.ROOT, "%s%02d", prefix, i));
-        return models;
-    }
-
+    /** Every built-in skin's layers, baked as dependencies of SensorItemModel on resource reload. */
     public static List<ResourceLocation> layers() {
-        List<ResourceLocation> layers = new ArrayList<>(List.of(BASE, LAMP_UP, LAMP_DOWN, EMPTY));
-        layers.addAll(List.of(NEEDLE));
-        layers.addAll(List.of(TAIL));
-        layers.addAll(List.of(SONAR));
-        layers.addAll(List.of(CHARGE));
-        return layers;
+        return Skins.allLayers();
     }
 
     /** Initial resource parsing runs before FMLClientSetupEvent. */
     public static void registerItemModelType() {
         ItemModels.ID_MAPPER.put(ResourceLocation.fromNamespaceAndPath(OreSense.MODID, "sensor"), SensorItemModel.Unbaked.CODEC);
+    }
+
+    /** Client events on the game bus (this class itself listens on the mod bus). */
+    @Mod.EventBusSubscriber(modid = OreSense.MODID, bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
+    public static final class GameEvents {
+        private GameEvents() {}
+
+        /**
+         * The first line after the price's place in the sensor's tooltip: the "Hold Shift" line, or
+         * with Shift held the details that replace it (the empty-sensor note first, else the usage).
+         */
+        private static final Set<String> TOOLTIP_AFTER_PRICE = Set.of(
+                "oresense.tooltip.more", "oresense.tooltip.empty.more.1", "oresense.tooltip.usage.scan");
+
+        /**
+         * While the sensor holds an unpaid lock whose price differs from 1.0.3's one shard, the hover
+         * tooltip says what it costs, above the "Hold Shift" line (or the details it stands for).
+         * Added here rather than in OreSensorItem.appendHoverText because only the client knows the
+         * player looking is in creative, where nothing is paid and no price is shown.
+         */
+        @SubscribeEvent
+        public static void addLockPrice(ItemTooltipEvent event) {
+            ItemStack stack = event.getItemStack();
+            if (!(stack.getItem() instanceof OreSensorItem)) return;
+            Player player = event.getEntity();
+            Component price = OreSensorItem.lockPriceText(stack, player != null && player.getAbilities().instabuild);
+            if (price == null) return;
+            List<Component> lines = event.getToolTip();
+            int at = lines.size();
+            for (int i = 0; i < lines.size(); i++) {
+                if (lines.get(i).getContents() instanceof TranslatableContents t && TOOLTIP_AFTER_PRICE.contains(t.getKey())) {
+                    at = i;
+                    break;
+                }
+            }
+            lines.add(at, Component.translatable("oresense.tooltip.lock_price", price).withStyle(ChatFormatting.LIGHT_PURPLE));
+        }
     }
 
     @SubscribeEvent
@@ -169,7 +210,7 @@ public class SensorClient {
 
         if (now != lastTick) {
             lastTick = now;
-            // vanilla's compass spring, CompassItemPropertyFunction$CompassWobble.update in 1.20.1:
+            // Vanilla-style compass spring for Minecraft 1.21.4:
             // pull 0.1 of the shortest way to the target into the speed, keep 0.8 of the speed
             double d = wrap(want - rotation + 0.5) - 0.5;
             delta += d * 0.1;
