@@ -1,43 +1,52 @@
 package com.spysyweeb.oresense.scan;
 
+import com.spysyweeb.oresense.VeinChooser;
+import com.spysyweeb.oresense.VeinPick;
 import it.unimi.dsi.fastutil.doubles.DoubleArrayList;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import it.unimi.dsi.fastutil.longs.LongSet;
 import net.minecraft.core.BlockPos;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.state.BlockState;
 
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
 
-/** Counts matching blocks around a point and remembers the closest one; floods veins. */
+/** Counts matching blocks around a point and picks the vein to lock; floods veins. */
 public final class OreScanner {
     private OreScanner() {}
 
     /**
-     * The closest matching block in the box around {@code center}, skipping veins the sensor
-     * has already been paid for. A candidate whose vein (flooded from it, at most
-     * {@code veinCap} blocks) contains one of {@code ignoredAnchors} is set aside with its whole
-     * vein and the next closest is tried; after {@code maxRejected} such veins the scan gives up
-     * and reports nothing. {@code count} is every matching block in the box, ignored or not.
-     * Ties go to the first block in x, z, y order, with or without anchors.
+     * A LARGEST scan floods every matching block in its box; past this many (oresOnly off and a
+     * common block as the sample) it falls back to CLOSEST for that check instead.
+     */
+    public static final int LARGEST_HIT_LIMIT = 4096;
+
+    /**
+     * The vein to lock in the box around {@code center}, skipping veins the sensor has already been
+     * paid for (a vein, flooded at most {@code veinCap} blocks, that holds one of
+     * {@code ignoredAnchors}). CLOSEST is 1.0.3's rule: the closest matching block's vein; ties go
+     * to the first block in x, z, y order; after {@code maxRejected} ignored veins it gives up.
+     * LARGEST floods every vein in the box and takes the biggest, the nearer on a tie, unless the
+     * box holds more than {@link #LARGEST_HIT_LIMIT} matching blocks, when this scan falls back to
+     * CLOSEST. {@code count} is every matching block in the box, ignored or not.
      */
     public static ScanResult scan(Level level, BlockPos center, Set<Block> targets, int hRange, int vRange,
-                                  long[] ignoredAnchors, int veinCap, int maxRejected) {
+                                  long[] ignoredAnchors, int veinCap, int maxRejected, VeinPick pick) {
         boolean ignoring = ignoredAnchors.length > 0;
+        boolean largest = pick == VeinPick.LARGEST;
         int count = 0;
         double bestSq = Double.MAX_VALUE;
-        BlockPos best = null;
-        // with anchors to honour, every hit is kept so the next closest can be found without rescanning
-        LongArrayList hits = ignoring ? new LongArrayList() : null;
-        DoubleArrayList hitsSq = ignoring ? new DoubleArrayList() : null;
+        long best = 0;
+        // CLOSEST with anchors to honour needs every hit, to try the next closest without rescanning;
+        // LARGEST needs every hit up to the limit, past which it falls back and needs only the nearest
+        LongArrayList hits = ignoring || largest ? new LongArrayList() : null;
+        DoubleArrayList hitsSq = hits != null ? new DoubleArrayList() : null;
 
         int minY = Math.max(level.getMinBuildHeight(), center.getY() - vRange);
         int maxY = Math.min(level.getMaxBuildHeight() - 1, center.getY() + vRange);
+        double cx = center.getX() + 0.5, cy = center.getY() + 0.5, cz = center.getZ() + 0.5;
         BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
 
         for (int x = center.getX() - hRange; x <= center.getX() + hRange; x++) {
@@ -49,44 +58,52 @@ public final class OreScanner {
                     BlockState state = level.getBlockState(cursor);
                     if (!targets.contains(state.getBlock())) continue;
                     count++;
-                    double dSq = cursor.distSqr(
-                            center.getX() + 0.5, center.getY() + 0.5, center.getZ() + 0.5, true);
-                    if (ignoring) {
+                    double dSq = cursor.distSqr(cx, cy, cz, true);
+                    if (dSq < bestSq) {
+                        bestSq = dSq;
+                        best = cursor.asLong();
+                    }
+                    if (hits != null && (ignoring || hits.size() <= LARGEST_HIT_LIMIT)) {
                         hits.add(cursor.asLong());
                         hitsSq.add(dSq);
-                    } else if (dSq < bestSq) {
-                        bestSq = dSq;
-                        best = cursor.immutable();
                     }
                 }
             }
         }
-        if (!ignoring) {
-            if (best == null) return ScanResult.EMPTY;
-            return new ScanResult(count, Math.sqrt(bestSq), best);
-        }
+        if (count == 0) return ScanResult.EMPTY;
 
-        LongSet anchors = new LongOpenHashSet(ignoredAnchors);
-        LongSet excluded = new LongOpenHashSet();
-        for (int rejected = 0; rejected < maxRejected; rejected++) {
-            int pick = -1;
-            double pickSq = Double.MAX_VALUE;
-            for (int i = 0; i < hits.size(); i++) {
-                double dSq = hitsSq.getDouble(i);
-                if (dSq < pickSq && !excluded.contains(hits.getLong(i))) {
-                    pickSq = dSq;
-                    pick = i;
-                }
+        long[] hitArray;
+        double[] sqArray;
+        if (hits == null || (!ignoring && count > LARGEST_HIT_LIMIT)) {
+            // plain CLOSEST, or a LARGEST that falls back with no anchors: the nearest block is all it needs
+            hitArray = new long[]{best};
+            sqArray = new double[]{bestSq};
+        } else {
+            hitArray = hits.toLongArray();
+            sqArray = hitsSq.toDoubleArray();
+        }
+        VeinChooser.Result result = VeinChooser.choose(pick, grid(level, targets), hitArray, sqArray, count,
+                LARGEST_HIT_LIMIT, ignoredAnchors, veinCap, maxRejected);
+        VeinChooser.Choice choice = result.choice();
+        if (choice == null || choice.vein().length == 0) {
+            return new ScanResult(count, Double.MAX_VALUE, null, List.of(), result.fallback());
+        }
+        List<BlockPos> vein = positions(choice.vein());
+        if (!largest || result.fallback()) {
+            // CLOSEST: the needle points at the hit itself, as in 1.0.3
+            return new ScanResult(count, Math.sqrt(choice.startDistSq()), BlockPos.of(choice.start()), vein, result.fallback());
+        }
+        // LARGEST: the needle points at the nearest block of the chosen vein
+        BlockPos nearest = vein.get(0);
+        double nearestSq = Double.MAX_VALUE;
+        for (BlockPos p : vein) {
+            double dSq = p.distSqr(cx, cy, cz, true);
+            if (dSq < nearestSq) {
+                nearestSq = dSq;
+                nearest = p;
             }
-            if (pick < 0) return ScanResult.EMPTY;
-
-            BlockPos hit = BlockPos.of(hits.getLong(pick));
-            List<BlockPos> vein = vein(level, hit, targets, veinCap);
-            if (!containsAny(vein, anchors)) return new ScanResult(count, Math.sqrt(pickSq), hit);
-            excluded.add(hit.asLong());
-            for (BlockPos p : vein) excluded.add(p.asLong());
         }
-        return ScanResult.EMPTY;
+        return new ScanResult(count, Math.sqrt(nearestSq), nearest, vein, false);
     }
 
     /**
@@ -97,32 +114,7 @@ public final class OreScanner {
      * list. Blocks in chunks that are not loaded are left out; this never loads a chunk.
      */
     public static List<BlockPos> vein(Level level, BlockPos start, Set<Block> targets, int cap) {
-        List<BlockPos> vein = new ArrayList<>();
-        if (cap <= 0 || !matches(level, start, targets)) return vein;
-
-        BlockPos first = start.immutable();
-        LongSet seen = new LongOpenHashSet();
-        ArrayDeque<BlockPos> queue = new ArrayDeque<>();
-        seen.add(first.asLong());
-        queue.add(first);
-        vein.add(first);
-        if (vein.size() >= cap) return vein;
-        while (!queue.isEmpty()) {
-            BlockPos p = queue.poll();
-            for (int dx = -1; dx <= 1; dx++) {
-                for (int dy = -1; dy <= 1; dy++) {
-                    for (int dz = -1; dz <= 1; dz++) {
-                        if (dx == 0 && dy == 0 && dz == 0) continue;
-                        BlockPos n = p.offset(dx, dy, dz);
-                        if (!seen.add(n.asLong()) || !matches(level, n, targets)) continue;
-                        vein.add(n);
-                        if (vein.size() >= cap) return vein;
-                        queue.add(n);
-                    }
-                }
-            }
-        }
-        return vein;
+        return positions(VeinChooser.flood(grid(level, targets), start.asLong(), cap));
     }
 
     /**
@@ -133,10 +125,25 @@ public final class OreScanner {
         return level.isLoaded(pos) && targets.contains(level.getBlockState(pos).getBlock());
     }
 
-    private static boolean containsAny(List<BlockPos> vein, LongSet anchors) {
-        for (BlockPos p : vein) {
-            if (anchors.contains(p.asLong())) return true;
-        }
-        return false;
+    /** The level as VeinChooser sees it: BlockPos.asLong positions, matching = {@link #matches}. */
+    private static VeinChooser.Grid grid(Level level, Set<Block> targets) {
+        BlockPos.MutableBlockPos cursor = new BlockPos.MutableBlockPos();
+        return new VeinChooser.Grid() {
+            @Override
+            public boolean matches(long pos) {
+                return OreScanner.matches(level, cursor.set(BlockPos.getX(pos), BlockPos.getY(pos), BlockPos.getZ(pos)), targets);
+            }
+
+            @Override
+            public long offset(long pos, int dx, int dy, int dz) {
+                return BlockPos.offset(pos, dx, dy, dz);
+            }
+        };
+    }
+
+    private static List<BlockPos> positions(long[] packed) {
+        List<BlockPos> out = new ArrayList<>(packed.length);
+        for (long p : packed) out.add(BlockPos.of(p));
+        return out;
     }
 }
