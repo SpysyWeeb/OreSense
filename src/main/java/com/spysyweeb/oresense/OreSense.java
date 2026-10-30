@@ -5,11 +5,14 @@ import com.spysyweeb.oresense.network.KnownSamplesPacket;
 import com.spysyweeb.oresense.network.OreSenseNetwork;
 import com.spysyweeb.oresense.scan.SampleAliases;
 import com.spysyweeb.oresense.scan.SampleResolver;
+import net.minecraft.server.MinecraftServer;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.inventory.MenuType;
+import com.spysyweeb.oresense.client.SensorClient;
+import net.minecraftforge.api.distmarker.Dist;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.common.extensions.IForgeMenuType;
 import net.minecraftforge.event.AddReloadListenerEvent;
@@ -20,6 +23,7 @@ import net.minecraftforge.eventbus.api.EventPriority;
 import net.minecraftforge.eventbus.api.IEventBus;
 import net.minecraftforge.fml.common.Mod;
 import net.minecraftforge.fml.javafmlmod.FMLJavaModLoadingContext;
+import net.minecraftforge.fml.loading.FMLEnvironment;
 import net.minecraftforge.registries.DeferredRegister;
 import net.minecraftforge.registries.ForgeRegistries;
 import net.minecraftforge.registries.RegistryObject;
@@ -46,11 +50,13 @@ public class OreSense {
         bus.addListener(this::addCreative);
         net.minecraftforge.fml.ModLoadingContext.get().registerConfig(
                 net.minecraftforge.fml.config.ModConfig.Type.COMMON, Config.SPEC);
+        // the client config file and the mod list's Config button; SensorClient is never loaded on a server
+        if (FMLEnvironment.dist == Dist.CLIENT) SensorClient.init();
         OreSenseNetwork.register();
         MinecraftForge.EVENT_BUS.addListener(this::reloadSamples);
-        MinecraftForge.EVENT_BUS.addListener(this::syncSamples);
-        // lowest priority, and never for a cancelled break: every mod that may refuse the break
-        // (claims, spawn protection, adventure mode) has had its say before a charge is spent
+        MinecraftForge.EVENT_BUS.addListener(this::sendSamplesOnDatapackSync);
+        // LOWEST, without receiving events already cancelled by earlier listeners.
+        // BreakEvent precedes removal; later listeners or removal checks can still refuse it.
         MinecraftForge.EVENT_BUS.addListener(EventPriority.LOWEST, false, BlockEvent.BreakEvent.class, this::spendCharge);
     }
 
@@ -69,10 +75,8 @@ public class OreSense {
 
     /**
      * Mining a block of a locked vein spends the sensor's charge. Forge posts BreakEvent from
-     * ServerPlayerGameMode.destroyBlock (ForgeHooks.onBlockBreakEvent), on the server thread,
-     * before the block is removed. A machine's fake player is a ServerPlayer too; it never
-     * ticks (FakePlayer.tick is empty), so it cannot lock a sensor itself and pays only for a
-     * locked sensor someone put in its inventory.
+     * ServerPlayerGameMode.destroyBlock on the server thread, before the block is removed. This
+     * hook does not confirm successful removal.
      */
     private void spendCharge(BlockEvent.BreakEvent event) {
         if (event.getLevel().isClientSide()) return;
@@ -81,30 +85,36 @@ public class OreSense {
     }
 
     /**
-     * Tells clients which items the sample slot takes, so the slot can refuse the rest on the
-     * client too instead of snapping back. Forge fires this for one player as they join
-     * (PlayerList.placeNewPlayer, before they can open anything) and for everyone after a
-     * /reload has swapped in and re-tagged the new data (PlayerList.reloadResources); in both
-     * cases the event player or the full player list identifies the recipients. The first join after start builds the resolver's
-     * map on the server thread, which the first scan used to do.
+     * Tells clients which items the sample slot accepts, so invalid samples are refused locally
+     * instead of snapping back. OnDatapackSyncEvent supplies getPlayer() for a joining player;
+     * on a data pack reload it supplies null, so the packet is sent to the full player list. The
+     * first join builds the resolver's map on the server thread.
      */
-    private void syncSamples(OnDatapackSyncEvent event) {
-        KnownSamplesPacket packet = new KnownSamplesPacket(
-                SampleResolver.knownSamples(event.getPlayerList().getServer().overworld()),
-                !Config.INSTANCE.oresOnly.get());
+    private void sendSamplesOnDatapackSync(OnDatapackSyncEvent event) {
         if (event.getPlayer() != null) {
-            OreSenseNetwork.send(event.getPlayer(), packet);
+            OreSenseNetwork.send(event.getPlayer(), samples(event.getPlayerList().getServer()));
             return;
         }
-        for (ServerPlayer player : event.getPlayerList().getPlayers()) {
-            OreSenseNetwork.send(player, packet);
-        }
+        syncSamples(event.getPlayerList().getServer());
     }
 
     /**
-     * The tab is rebuilt on every server join. On a server that does not ship this mod, Forge's
-     * registry sync leaves ORE_SENSOR absent for the session, so an unconditional get() throws
-     * and Forge reports a mod loading error (seen in the Mine instance log on 2026-09-23).
+     * Sends every player the server's sample list again: after a /reload (above), and when the
+     * settings screen changes oresOnly in a single-player world (on the server thread).
+     */
+    public static void syncSamples(MinecraftServer server) {
+        KnownSamplesPacket packet = samples(server);
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) OreSenseNetwork.send(player, packet);
+    }
+
+    private static KnownSamplesPacket samples(MinecraftServer server) {
+        return new KnownSamplesPacket(SampleResolver.knownSamples(server.overworld()),
+                !Config.INSTANCE.oresOnly.get());
+    }
+
+    /**
+     * The tab can be rebuilt after joining a server. Add the sensor only while its registry
+     * entry is present, so an absent entry is never dereferenced.
      */
     private void addCreative(BuildCreativeModeTabContentsEvent event) {
         if (event.getTabKey() == CreativeModeTabs.TOOLS_AND_UTILITIES && ORE_SENSOR.isPresent()) {
