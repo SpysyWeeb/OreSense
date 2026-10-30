@@ -12,6 +12,7 @@ import net.fabricmc.fabric.api.networking.v1.ServerPlayConnectionEvents;
 import net.fabricmc.fabric.api.resource.ResourceManagerHelper;
 import net.fabricmc.fabric.api.screenhandler.v1.ExtendedScreenHandlerType;
 import net.minecraft.core.Registry;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.MinecraftServer;
@@ -21,13 +22,20 @@ import net.minecraft.world.inventory.MenuType;
 import net.minecraft.world.item.CreativeModeTabs;
 import net.fabricmc.fabric.api.itemgroup.v1.ItemGroupEvents;
 import net.minecraft.world.item.Item;
+import net.minecraft.world.item.component.TooltipDisplay;
 
 public class OreSense implements ModInitializer {
     public static final String MODID = "oresense";
 
+    /**
+     * The sample sits in the sensor's CONTAINER component, so vanilla would add its own contents
+     * line ("1 x Diamond") under the tooltip's "Tuned to"; the item's default TOOLTIP_DISPLAY hides
+     * it. Default components are code on both sides and never sent, so 1.0.3 peers are unaffected.
+     */
     public static final Item ORE_SENSOR = Registry.register(BuiltInRegistries.ITEM,
             ResourceLocation.fromNamespaceAndPath(MODID, "ore_sensor"), new OreSensorItem(
-                    new Item.Properties().setId(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.ITEM, net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(MODID, "ore_sensor"))).stacksTo(1)));
+                    new Item.Properties().setId(net.minecraft.resources.ResourceKey.create(net.minecraft.core.registries.Registries.ITEM, net.minecraft.resources.ResourceLocation.fromNamespaceAndPath(MODID, "ore_sensor"))).stacksTo(1)
+                    .component(DataComponents.TOOLTIP_DISPLAY, TooltipDisplay.DEFAULT.withHidden(DataComponents.CONTAINER, true))));
 
     public static final MenuType<OreSensorMenu> ORE_SENSOR_MENU =
             Registry.register(BuiltInRegistries.MENU, ResourceLocation.fromNamespaceAndPath(MODID, "ore_sensor"),
@@ -39,12 +47,16 @@ public class OreSense implements ModInitializer {
         ItemGroupEvents.modifyEntriesEvent(CreativeModeTabs.TOOLS_AND_UTILITIES).register(entries -> entries.accept(ORE_SENSOR));
         OreSenseNetwork.register();
         ResourceManagerHelper.get(PackType.SERVER_DATA).registerReloadListener(new SampleAliases());
-        ServerLifecycleEvents.START_DATA_PACK_RELOAD.register((server, resources) -> SampleResolver.invalidate());
+        // /reload also reads config/oresense.json again, before the data so the sample list sent
+        // at the end already follows a changed oresOnly
+        ServerLifecycleEvents.START_DATA_PACK_RELOAD.register((server, resources) -> {
+            Config.reload();
+            SampleResolver.invalidate();
+        });
         ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resources, success) -> {
             if (success) {
                 SampleResolver.invalidate();
-                KnownSamplesPacket packet = samples(server);
-                for (ServerPlayer player : server.getPlayerList().getPlayers()) OreSenseNetwork.send(player, packet);
+                syncSamples(server);
             }
         });
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> SampleResolver.invalidate());
@@ -55,6 +67,15 @@ public class OreSense implements ModInitializer {
         PlayerBlockBreakEvents.AFTER.register((level, player, pos, state, blockEntity) -> {
             if (player instanceof ServerPlayer serverPlayer) OreSensorItem.onBlockBroken(serverPlayer, level, pos);
         });
+    }
+
+    /**
+     * Sends every player the server's sample list again: after /reload, and when the settings
+     * screen changes oresOnly in a single-player world (on the server thread).
+     */
+    public static void syncSamples(MinecraftServer server) {
+        KnownSamplesPacket packet = samples(server);
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) OreSenseNetwork.send(player, packet);
     }
 
     private static KnownSamplesPacket samples(MinecraftServer server) {
