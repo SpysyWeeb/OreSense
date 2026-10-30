@@ -8,6 +8,9 @@ lamps for ore above or below you, a charge gauge, and a window that shows what y
 
 ## How it works
 
+The steps below use the default charge settings: one shard per vein, up to 128 blocks per lock,
+and ten seconds of grace outside scan range; the Configuration section lists the other modes.
+
 1. **Tune it.** Right-click with the sensor to open it. Drop a sample into the **Sample** slot: an ore block,
    the item it drops, or anything made purely of that material. A diamond finds diamond ore, an iron ingot
    or nugget finds iron ore, cut copper finds copper ore, netherite scrap finds ancient debris, an amethyst
@@ -25,7 +28,8 @@ lamps for ore above or below you, a charge gauge, and a window that shows what y
    sensor looks for another. Releasing within four blocks of the vein counts as found and spends the shard.
 
 A grey needle at rest with cyan rings sweeping the face means the sensor is searching and has found nothing
-in range. A pulsing red bar under the window means it is out of shards. Creative mode never spends charges.
+in range. A pulsing red bar under the window means it cannot pay the lock price.
+Creative mode never spends charges.
 
 ## Recipe
 
@@ -61,7 +65,7 @@ book when you pick up an amethyst shard.
   }
   ```
 
-  A geode counts as one vein, so it costs one shard.
+  A geode counts as one vein, so it costs one shard with the default charge settings.
 
 Samples and sensor readings are saved using Minecraft's item components. Sensors upgraded from an
 older world migrate their saved sample automatically while preserving their charge and vein data.
@@ -70,22 +74,43 @@ The mapping is rebuilt from the server's loot tables and recipes on every data p
 
 ## Configuration
 
-`config/oresense-common.toml`, created on first start:
+`config/oresense-common.toml` is created on first start, with `[scanning]`, `[charging]` and
+`[targeting]` sections.
+
+Keys below use section.name notation; keep each setting name inside its section.
+
+Where the settings screen is available, its edits apply in memory and Done saves changed files;
+Cancel and Esc restore the opening values without writing. Multiplayer gameplay uses the server's
+configuration; edit the server's file to change it.
 
 | key | default | meaning |
 |---|---|---|
-| `horizontalRange` | 32 | how far out the sensor looks, in blocks |
-| `verticalRange` | 16 | how far up and down it looks |
-| `scanIntervalTicks` | 20 | how often a held sensor rescans (20 = once a second) |
-| `showDirection` | true | include a compass direction in the optional text reading |
-| `showActionBar` | false | also print the reading as text above the hotbar |
-| `oresOnly` | true | false lets any block be used as a sample directly |
+| `scanning.horizontalRange` | 32 | horizontal scan radius in blocks |
+| `scanning.verticalRange` | 16 | vertical scan radius in blocks |
+| `scanning.scanIntervalTicks` | 20 | ticks between scans (20 = once a second) |
+| `scanning.showDirection` | true | include direction in the optional text reading |
+| `scanning.showActionBar` | false | also show the reading above the hotbar |
+| `scanning.oresOnly` | true | false permits any block as a sample |
+| `charging.chargeMode` | PER_VEIN | PER_VEIN, PER_SIZE, or PER_BLOCK |
+| `charging.shardsPerVein` | 1 | PER_VEIN price; 0 makes the sensor free |
+| `charging.blocksPerShard` | 16 | PER_SIZE blocks per shard, rounded up |
+| `charging.veinCap` | 128 | maximum blocks covered by one lock |
+| `charging.lockGraceTicks` | 200 | ticks a lock survives out of range (20 = one second) |
+| `targeting.targetPick` | CLOSEST | CLOSEST or LARGEST vein; the nearer vein wins a size tie |
+
+Display settings for this computer are in `config/oresense-client.toml`, which the settings screen (the
+Config button for OreSense in the mod list) edits. The dial has three skins, Concept (the original v0.0.1
+64 px dial), Compass A (the 1.0 art, the default) and Compass B (Compass A with arrow lamps on the face),
+chosen on the settings screen.
 
 ## Requirements
 
 Minecraft 1.20.6 with Forge 50.2.0 or newer within the 50.x series, and Java 21. The mod must be installed on both the client and the server: the
 scanning, locking, and charge logic runs on the server, and the sensor's screen uses a networked menu.
 A client with OreSense will not connect to a server without it, and the other way round.
+
+On Forge 50.2.0, TOML tables may be reordered once on a start or after Done in the settings screen,
+without changing values or losing comments.
 
 ## Building
 
