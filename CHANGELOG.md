@@ -1,5 +1,34 @@
 # Changelog
 
+## 1.1.0 — 2026-10-30
+
+- Settings screen: open it from the mod list's Config button, on the title screen or from the
+  pause menu's Mods screen in a world. Skin previews on top, then every setting with a short
+  description. Changes apply at once (the game keeps running behind the screen); Done saves,
+  Cancel puts everything back. Gameplay settings are greyed out on a remote server, where the
+  server's own file decides. Direction in text is greyed out while Text reading is off.
+  On NeoForge 21.9.16-beta the Mods screen crashes before the settings screen can open (fixed in
+  NeoForge 21.10): edit `config/oresense-client.toml` by hand, as the README's known issue says.
+- New display settings for this computer (`config/oresense-client.toml`): the dial skin and
+  Pulsing lights (on by default; off holds the needle glow, sonar sweep and charge gauge pulse
+  steady, and the needle still turns).
+- The dial has three skins, Concept (the original v0.0.1 64 px dial), Compass A (the 1.0 art, the
+  default) and Compass B (Compass A with arrow lamps on the face), chosen on the settings screen.
+- Charge modes (`charging.chargeMode`): per vein (as before, `shardsPerVein` shards, 0 makes the
+  sensor free), per size (one shard per `blocksPerShard` blocks of the vein) or per block mined.
+  A lock's price, vein size cap and grace time are fixed when it is made. A sensor holding fewer
+  shards than the price does not lock, and its tooltip says how many shards the vein needs.
+- When a lock costs something other than one shard per vein, its price shows above the hotbar
+  the moment it locks, and in the sensor's tooltip until it is paid.
+- Vein choice is a world setting (`targeting.targetPick`): sensors lock onto the closest vein, as
+  before, or the largest vein in range, the nearer one on a tie. Changing it lets a lock that is
+  not paid for yet go.
+- Shorter sensor tooltip: the sample, the shards and any warning, then "Hold Shift to view more
+  information" for how to use it. The game's own contents line ("1 x Diamond"), which repeated the
+  sample, is hidden.
+- Existing config files and sensors keep working: new settings start at their defaults, and
+  1.0.3 clients and servers can still join 1.1.0 ones in both directions.
+
 ## 1.0.3 — 2026-10-17
 
 - With `oresOnly` off, storage blocks, raw-ore blocks and cut copper now find their ore as well as themselves; previously they stood only for themselves.
