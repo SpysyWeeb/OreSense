@@ -1,0 +1,38 @@
+package com.spysyweeb.oresense.client;
+
+import com.spysyweeb.oresense.LiveConfig;
+import com.spysyweeb.oresense.client.skin.Skins;
+import net.neoforged.neoforge.common.ModConfigSpec;
+import org.apache.commons.lang3.tuple.Pair;
+
+/**
+ * The display settings, config/oresense-client.toml: how the sensor looks on this computer.
+ * Registered as a CLIENT config (SensorClient.init), so it is read on the client only and is always
+ * editable, on a server too. The settings screen edits it only through {@link #LIVE}.
+ */
+public final class ClientConfig {
+    public static final ModConfigSpec SPEC;
+    public static final ClientConfig INSTANCE;
+    /** The settings screen's way in: live changes in memory, one write on Done. */
+    public static final LiveConfig LIVE;
+
+    public final ModConfigSpec.ConfigValue<String> skin;
+    public final ModConfigSpec.BooleanValue pulsingLights;
+
+    ClientConfig(ModConfigSpec.Builder b) {
+        b.comment("OreSense - how the sensor looks on this computer").push("display");
+        skin = b.comment("Which dial art to draw. Resource packs can still retexture any skin.",
+                        "Built-in skins: " + String.join(", ", Skins.ids()) + ". An unknown id draws " + Skins.DEFAULT_ID + ".")
+                .define("skin", Skins.DEFAULT_ID);
+        pulsingLights = b.comment("The needle glow, sonar sweep and charge gauge pulse. Off holds them steady; the needle still turns.")
+                .define("pulsingLights", true);
+        b.pop();
+    }
+
+    static {
+        Pair<ClientConfig, ModConfigSpec> pair = new ModConfigSpec.Builder().configure(ClientConfig::new);
+        INSTANCE = pair.getLeft();
+        SPEC = pair.getRight();
+        LIVE = new LiveConfig(SPEC);
+    }
+}
