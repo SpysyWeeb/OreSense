@@ -6,13 +6,13 @@ Tune it with a sample, load it with amethyst shards, and follow the needle to th
 OreSense adds one item, the **Ore Sensor**. It is a compass-style dial with a red needle, two indicator
 lamps for ore above or below you, a charge gauge, and a window that shows what you are looking for.
 
-**Current mod version: 1.0.3** · [CurseForge downloads](https://www.curseforge.com/minecraft/mc-mods/oresense/files)
+**Source version: 1.1.0** · [CurseForge downloads](https://www.curseforge.com/minecraft/mc-mods/oresense/files)
 · [GitHub releases](https://github.com/SpysyWeeb/OreSense/releases)
 · [Report an issue](https://github.com/SpysyWeeb/OreSense/issues)
 
 ## Supported versions
 
-OreSense 1.0.3 has **122 published builds** covering all **34 stable Minecraft releases from 1.17 through
+OreSense 1.1.0 has **122 source branches** covering all **34 stable Minecraft releases from 1.17 through
 26.3**, wherever each loader is available. Each Minecraft version and loader has its own build.
 
 | Loader | Minecraft coverage | Builds |
@@ -50,6 +50,9 @@ The remaining Quilt builds require Quilt Loader 0.30.1 or newer.
 
 ## How it works
 
+The steps below use the default charge settings: one shard per vein, up to 128 blocks per lock,
+and ten seconds of grace outside scan range; the Configuration section lists the other modes.
+
 1. **Tune it.** Right-click with the sensor to open it. Drop a sample into the **Sample** slot: an ore block,
    the item it drops, or anything made purely of that material. A diamond finds diamond ore, an iron ingot
    or nugget finds iron ore, cut copper finds copper ore, netherite scrap finds ancient debris, an amethyst
@@ -70,7 +73,8 @@ The remaining Quilt builds require Quilt Loader 0.30.1 or newer.
    shard if that lock has not already been paid for.
 
 A grey needle at rest with cyan rings sweeping the face means the sensor is searching and has found nothing
-in range. If it finds a target but has no charge, the gauge flashes red. Creative mode never spends charges.
+in range. If it finds a target but cannot pay the lock price, the gauge flashes red.
+Creative mode never spends charges.
 
 ## Recipe
 
@@ -103,8 +107,8 @@ The ore tag depends on the loader and Minecraft version:
 
 | Builds | Ore block tag |
 |---|---|
-| Forge through 1.21.11; NeoForge 1.20.1–1.20.4 | `forge:ores` |
-| Forge 26.x; NeoForge 1.20.5 and later | `c:ores` |
+| Forge through 1.21; NeoForge 1.20.1–1.20.4 | `forge:ores` |
+| Forge 1.21.1 and later; NeoForge 1.20.5 and later | `c:ores` |
 | Fabric and Quilt | `oresense:ores`, including vanilla ores and the optional `c:ores` and `forge:ores` tags |
 
 Data packs can also map a sample directly to extra targets. Any file under
@@ -125,27 +129,40 @@ Data packs can also map a sample directly to extra targets. Any file under
 ```
 
 Connected matching blocks share a vein lock, including amethyst blocks in a geode. Each lock tracks up to
-128 blocks and costs one shard when first mined or released nearby.
+128 blocks by default and costs one shard when first mined or released nearby
+with the default charge settings.
 
 ## Configuration
 
-The configuration file is created on first launch. Edit it, then restart the game or server:
+Gameplay settings are created on first start in `config/oresense-common.toml` on Forge/NeoForge
+and `config/oresense.json` on Fabric/Quilt, under `scanning`, `charging` and `targeting`.
+Fabric/Quilt's `/reload` re-reads the JSON file.
 
-| Loader | File | Settings section |
-|---|---|---|
-| Forge / NeoForge | `config/oresense-common.toml` | `[scanning]` |
-| Fabric / Quilt | `config/oresense.json` | `"scanning"` object |
+Keys below use section.name notation; keep each setting name inside its section.
+
+Where the settings screen is available, its edits apply in memory and Done saves changed files;
+Cancel and Esc restore the opening values without writing. Multiplayer gameplay uses the server's
+configuration; edit the server's file to change it.
 
 | key | default | meaning |
 |---|---|---|
-| `horizontalRange` | 32 | how far out the sensor looks, in blocks |
-| `verticalRange` | 16 | how far up and down it looks |
-| `scanIntervalTicks` | 20 | how often a held sensor rescans (20 = once a second) |
-| `showDirection` | true | include a compass direction in the optional text reading |
-| `showActionBar` | false | also print the reading as text above the hotbar |
-| `oresOnly` | true | false lets any block be used as a sample directly |
+| `scanning.horizontalRange` | 32 | horizontal scan radius in blocks |
+| `scanning.verticalRange` | 16 | vertical scan radius in blocks |
+| `scanning.scanIntervalTicks` | 20 | ticks between scans (20 = once a second) |
+| `scanning.showDirection` | true | include direction in the optional text reading |
+| `scanning.showActionBar` | false | also show the reading above the hotbar |
+| `scanning.oresOnly` | true | false permits any block as a sample |
+| `charging.chargeMode` | PER_VEIN | PER_VEIN, PER_SIZE, or PER_BLOCK |
+| `charging.shardsPerVein` | 1 | PER_VEIN price; 0 makes the sensor free |
+| `charging.blocksPerShard` | 16 | PER_SIZE blocks per shard, rounded up |
+| `charging.veinCap` | 128 | maximum blocks covered by one lock |
+| `charging.lockGraceTicks` | 200 | ticks a lock survives out of range (20 = one second) |
+| `targeting.targetPick` | CLOSEST | CLOSEST or LARGEST vein; the nearer vein wins a size tie |
 
-In multiplayer, edit the server configuration to change scanning and the optional action-bar readings.
+Display settings for this computer are in `config/oresense-client.toml`, which the settings screen (the
+Config button for OreSense in the mod list) edits. The dial has three skins, Concept (the original v0.0.1
+64 px dial), Compass A (the 1.0 art, the default) and Compass B (Compass A with arrow lamps on the face),
+chosen on the settings screen.
 
 ## Source branches and building
 
@@ -154,7 +171,7 @@ The default branch, **`Forge-1.20.1`**, contains the Forge 1.20.1 source. Other 
 such as `Fabric-26.3`, `Quilt-1.17`, and `NeoForge-1.21.1`.
 
 Release tags include the mod version, loader, and Minecraft version:
-`v<mod version>-<loader>-<Minecraft version>`, for example `v1.0.3-quilt-26.3`.
+`v<mod version>-<loader>-<Minecraft version>`, for example `v1.1.0-quilt-26.3`.
 Each GitHub release includes its compiled mod JAR.
 
 Use **JDK 17** to build Minecraft 1.17–1.20.4 branches, **JDK 21** for 1.20.5–1.21.11, and **JDK 25** for
