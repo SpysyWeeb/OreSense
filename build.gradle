@@ -16,6 +16,17 @@ neoForge {
     mods { "${mod_id}" { sourceSet(sourceSets.main) } }
 }
 sourceSets.main.resources.srcDir 'src/generated/resources'
+
+dependencies {
+    // Unit tests cover only pure classes (no Minecraft types), so they port to every branch unchanged.
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
+}
+
+tasks.named('test', Test).configure {
+    useJUnitPlatform()
+}
+
 tasks.named('processResources', ProcessResources).configure {
     var properties = [minecraft_version: minecraft_version, minecraft_version_range: minecraft_version_range,
         neo_version: neo_version, neo_version_range: neo_version_range, loader_version_range: loader_version_range,
