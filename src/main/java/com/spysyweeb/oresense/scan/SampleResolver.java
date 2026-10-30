@@ -233,10 +233,8 @@ public final class SampleResolver {
     }
 
     /**
-     * The items an ingredient accepts. For a tag with no members Forge hands out a barrier
-     * named "Empty Tag: ..." instead (Ingredient.TagValue.getItems). That is no material, so it
-     * is left out: such an ingredient accepts nothing, links nothing, and keeps a crafting
-     * recipe that needs it from counting as pure.
+     * The items an ingredient accepts. Empty stacks and barrier placeholders are not valid
+     * sample candidates, so they are filtered out.
      */
     private static Set<Item> accepted(Ingredient ingredient) {
         Set<Item> items = new HashSet<>();
