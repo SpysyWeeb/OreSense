@@ -37,6 +37,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.function.BooleanSupplier;
 import java.util.function.Consumer;
 
 public class OreSensorItem extends Item {
@@ -58,19 +59,42 @@ public class OreSensorItem extends Item {
     private static final String LOCK_SINCE = "Since";
     private static final String LOCK_LOST = "LostSince";    // -1 while in range, else when it left range
     private static final String LOCK_PAID = "Paid";
+    // 1.1.0, written when the lock is made and read from the lock while it exists (a config change
+    // waits for the next lock); a 1.0.3 lock has none and reads as price 1, PER_VEIN, grace 200,
+    // cap 128, closest
+    private static final String LOCK_PRICE = "Price";       // shards
+    private static final String LOCK_MODE = "Mode";         // ChargeMode name
+    private static final String LOCK_GRACE = "Grace";       // ticks out of range before the lock lets go
+    private static final String LOCK_CAP = "Cap";           // the vein cap its flood used
+    private static final String LOCK_LARGEST = "Largest";   // chosen as the largest vein (not through the fallback)
+    private static final String PICK_FALLBACK_TAG = "PickFallback"; // the fallback notice has been shown
+    private static final String NEEDS_TAG = "Needs";        // with NoCharge: shards the found vein's lock needs
 
-    /** Amethyst shards the sensor holds. One is spent on each vein its holder mines. */
+    /** Amethyst shards the sensor holds. Each lock's price is paid out of them (config charging). */
     public static final int MAX_CHARGES = 64;
-    /** How long a locked vein may stay out of scan range before the lock lets go: 10 s. */
-    public static final int LOCK_GRACE_TICKS = 200;
-    /** The most blocks one lock records and one vein flood visits. */
-    public static final int VEIN_CAP = 128;   // a geode shell is usually over 64 blocks; one charge per geode needs the whole thing in one lock
+    /** The vein cap 1.0.3 used for every lock; a 1.0.3 lock with this many blocks was cut short. */
+    private static final int LEGACY_VEIN_CAP = 128;
+    /** The lock grace 1.0.3 used for every lock: 10 s. */
+    private static final int LEGACY_LOCK_GRACE = 200;
+    /**
+     * How long the price line stays above the hotbar after a lock, in ticks (vanilla shows an
+     * action-bar message about this long); the continuous reading waits that long so it does not
+     * write over it.
+     */
+    private static final int PRICE_LINE_TICKS = 60;
     /** A sneak-use release this close to the locked vein (blocks, centre to centre) counts as found. */
     public static final double FOUND_DISTANCE = 4.0;
     /** Paid veins remembered so they are not locked, and charged, again; the oldest goes first. */
     public static final int IGNORE_VEINS = 8;
     /** Positions remembered per paid vein. */
     public static final int IGNORE_ANCHORS_PER_VEIN = 4;
+
+    /**
+     * Whether the player looking at the tooltip holds Shift, which swaps the "Hold Shift" line for
+     * the details. Common code cannot name a client class, so the client initializer sets it
+     * (SensorClient.init); the dedicated server never builds tooltips.
+     */
+    public static BooleanSupplier moreInfoHeld = () -> false;
 
     public OreSensorItem(Properties properties) { super(properties); }
 
@@ -113,21 +137,34 @@ public class OreSensorItem extends Item {
     }
 
     /**
-     * Stores the shard count; the screen's charge slot writes through here. Adding charges also
-     * clears NoCharge: the flag says the server had no charge to spend, and that just stopped
-     * being true, so the dial should not keep showing it until the next check.
+     * Stores the shard count; the screen's charge slot writes through here. Adding enough charges
+     * also clears NoCharge: the flag says the server could not pay the lock it found (Needs
+     * shards, 1 when a 1.0.3 server set it), and that just stopped being true, so the dial should
+     * not keep showing it until the next check.
      */
     public static void setCharges(ItemStack sensor, int charges) {
         int count = Mth.clamp(charges, 0, MAX_CHARGES);
         CompoundTag tag = sensor.getOrCreateTag();
         tag.putInt(CHARGES_TAG, count);
-        if (count > 0 && tag.getBoolean(NO_CHARGE_TAG)) tag.putBoolean(NO_CHARGE_TAG, false);
+        if (tag.getBoolean(NO_CHARGE_TAG) && count >= neededShards(tag)) {
+            tag.putBoolean(NO_CHARGE_TAG, false);
+        }
     }
 
-    /** The server found a vein but had no charge to lock it with (never for creative players). */
+    /** The server found a vein but the sensor could not pay its lock price (never for creative). */
     public static boolean isNoCharge(ItemStack sensor) {
         CompoundTag tag = sensor.getTag();
         return tag != null && tag.getBoolean(NO_CHARGE_TAG);
+    }
+
+    /** With NoCharge: how many shards the vein the server found needs (1 from a 1.0.3 server). */
+    public static int getNeededShards(ItemStack sensor) {
+        CompoundTag tag = sensor.getTag();
+        return tag == null ? 1 : neededShards(tag);
+    }
+
+    private static int neededShards(CompoundTag tag) {
+        return tag.contains(NEEDS_TAG, Tag.TAG_INT) ? tag.getInt(NEEDS_TAG) : 1;
     }
 
     public static boolean isLocked(ItemStack sensor) {
@@ -137,10 +174,10 @@ public class OreSensorItem extends Item {
     /** Locked, but the vein has been out of scan range since {@code LostSince}. */
     public static boolean isLockLost(ItemStack sensor) {
         CompoundTag lock = lockOf(sensor);
-        return lock != null && lock.getLong(LOCK_LOST) >= 0;
+        return lock != null && lock.contains(LOCK_LOST) && lock.getLong(LOCK_LOST) >= 0;
     }
 
-    /** Locked, and a charge has already been spent on this vein. */
+    /** Locked, and the vein's price has been paid (never for PER_BLOCK, which pays per block). */
     public static boolean isLockPaid(ItemStack sensor) {
         CompoundTag lock = lockOf(sensor);
         return lock != null && lock.getBoolean(LOCK_PAID);
@@ -165,6 +202,7 @@ public class OreSensorItem extends Item {
         tag.putLong(PING_TAG, level.getGameTime());
         tag.putFloat(RANGE_TAG, range);
         tag.putBoolean(NO_CHARGE_TAG, noCharge);
+        if (!noCharge) tag.remove(NEEDS_TAG);
         if (pos != null) {
             tag.putIntArray(TARGET_TAG, new int[]{pos.getX(), pos.getY(), pos.getZ()});
             tag.putFloat(DIST_TAG, (float) distance);
@@ -182,6 +220,12 @@ public class OreSensorItem extends Item {
         record(sensor, level, null, -1, range, false);
     }
 
+    /** Ore found, but the sensor holds fewer shards than the lock would cost: no lock, red gauge. */
+    private static void noCharge(ItemStack sensor, Level level, int range, int needs) {
+        record(sensor, level, null, -1, range, true);
+        sensor.getOrCreateTag().putInt(NEEDS_TAG, needs);
+    }
+
     /**
      * The server stops checking this sensor: it lost its lock and is not in a hand. No Target
      * and no PingTime, so the dial goes dormant now instead of showing a reading that nobody
@@ -193,6 +237,7 @@ public class OreSensorItem extends Item {
         tag.remove(PING_TAG);
         tag.putFloat(DIST_TAG, -1f);
         tag.putBoolean(NO_CHARGE_TAG, false);
+        tag.remove(NEEDS_TAG);
     }
 
     private static String dimensionId(Level level) {
@@ -254,7 +299,8 @@ public class OreSensorItem extends Item {
     /**
      * Right-click opens the sample and charge slots. Sneak-right-click on a locked sensor lets
      * the lock go instead: standing within {@link #FOUND_DISTANCE} of a vein not yet paid for
-     * counts as having found it and spends its charge; otherwise nothing is spent.
+     * counts as having found it and pays its price; otherwise nothing is spent. A PER_BLOCK lock
+     * is paid per block mined, so letting it go costs nothing.
      */
     @Override
     public InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand hand) {
@@ -284,17 +330,20 @@ public class OreSensorItem extends Item {
             boolean paid = lock.getBoolean(LOCK_PAID);
             long[] blocks = lock.getLongArray(LOCK_BLOCKS);
             List<BlockPos> remaining = targets.isEmpty() ? List.of() : remaining(level, blocks, targets);
-            if (!paid && !remaining.isEmpty()) {
+            // a PER_BLOCK lock charges only for blocks actually mined, so finding it costs nothing
+            if (!paid && ChargePolicy.paysOnce(lockMode(lock)) && !remaining.isEmpty()) {
                 BlockPos center = player.blockPosition();
                 if (distance(center, nearest(remaining, center)) <= FOUND_DISTANCE && pay(player, sensor, lock)) {
-                    paid = true;
-                    player.playNotifySound(SoundEvents.AMETHYST_CLUSTER_BREAK, SoundSource.PLAYERS, 1.0f, 1.0f);
+                    // the shard chime only when shards are spent (or creative pays), not for a free lock
+                    if (lockPrice(lock) > 0 || player.getAbilities().instabuild) {
+                        player.playNotifySound(SoundEvents.AMETHYST_CLUSTER_BREAK, SoundSource.PLAYERS, 1.0f, 1.0f);
+                    }
                 }
             }
             // A hand release means "not this one": skip the vein whether or not it was paid,
             // otherwise the next check re-locks the same vein a second later (Alex heard exactly
             // that: the release chime followed by a lock chime).
-            release(level, sensor, true, blocks, remaining, targets);
+            release(level, sensor, lock, true, blocks, remaining, targets);
         }
         miss(sensor, level, Config.INSTANCE.horizontalRange.get());
         player.playNotifySound(SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.PLAYERS,
@@ -311,8 +360,7 @@ public class OreSensorItem extends Item {
     @Override
     public void inventoryTick(ItemStack sensor, Level level, Entity entity, int slot, boolean selected) {
         if (!(level instanceof ServerLevel serverLevel) || !(entity instanceof ServerPlayer player)) return;
-        // by identity, not the selected flag: Forge passes selected for the off hand and armour
-        // slots whenever their slot index equals the selected hotbar index
+        // Compare the actual hand stacks by identity; only the main hand or off hand is held.
         boolean inHand = sensor == player.getMainHandItem() || sensor == player.getOffhandItem();
         if (!inHand && !isLocked(sensor)) return;
 
@@ -322,8 +370,9 @@ public class OreSensorItem extends Item {
     }
 
     private static void check(ServerLevel level, ServerPlayer player, ItemStack sensor, boolean inHand) {
-        int hRange = Config.INSTANCE.horizontalRange.get();
-        int vRange = Config.INSTANCE.verticalRange.get();
+        Config config = Config.INSTANCE;
+        int hRange = config.horizontalRange.get();
+        int vRange = config.verticalRange.get();
         CompoundTag tag = sensor.getOrCreateTag();
         forgetOtherLevel(level, tag);
 
@@ -347,30 +396,65 @@ public class OreSensorItem extends Item {
             return;
         }
 
-        // 4. held and free: look for the nearest vein not already paid for
+        // 4. held and free: look for the closest (or largest) vein not already paid for
         BlockPos center = player.blockPosition();
+        VeinPick pick = config.targetPick.get();
+        int cap = config.veinCap.get();
         ScanResult result = OreScanner.scan(level, center, targets, hRange, vRange,
-                tag.getLongArray(IGNORE_TAG), VEIN_CAP, IGNORE_VEINS);
+                tag.getLongArray(IGNORE_TAG), cap, IGNORE_VEINS, pick);
+        noteFallback(player, tag, result.fallback());
         if (!result.found()) {
             miss(sensor, level, hRange);
             return;
         }
-        if (getCharges(sensor) == 0 && !player.getAbilities().instabuild) {
-            record(sensor, level, null, -1, hRange, true);
+        // the price is fixed now and stored in the lock, so a config change does not move it
+        List<BlockPos> vein = result.veinBlocks();
+        ChargeMode mode = config.chargeMode.get();
+        int price = ChargePolicy.price(mode, config.shardsPerVein.get(), config.blocksPerShard.get(), vein.size());
+        boolean creative = player.getAbilities().instabuild;
+        if (!creative && !ChargePolicy.affordable(price, getCharges(sensor))) {
+            noCharge(sensor, level, hRange, price);
             return;
         }
-        List<BlockPos> vein = OreScanner.vein(level, result.nearest(), targets, VEIN_CAP);
+        boolean largest = pick == VeinPick.LARGEST && !result.fallback();
         CompoundTag newLock = new CompoundTag();
         newLock.putLongArray(LOCK_BLOCKS, pack(vein));
         newLock.putLong(LOCK_SINCE, level.getGameTime());
         newLock.putLong(LOCK_LOST, -1L);
         newLock.putBoolean(LOCK_PAID, false);
+        newLock.putInt(LOCK_PRICE, price);
+        newLock.putString(LOCK_MODE, mode.name());
+        newLock.putInt(LOCK_GRACE, config.lockGraceTicks.get());
+        newLock.putInt(LOCK_CAP, cap);
+        newLock.putBoolean(LOCK_LARGEST, largest);
         tag.put(LOCK_TAG, newLock);
         hit(sensor, level, result.nearest(), result.nearestDistance(), hRange);
         // Use the same chime as manual release, at a higher pitch for a new lock.
         player.playNotifySound(SoundEvents.AMETHYST_BLOCK_CHIME, SoundSource.PLAYERS,
                 AMETHYST_CHIME_VOLUME_SCALE, 1.2f);
-        showReading(player, center, result.nearest(), result.nearestDistance(), hRange, vein.size());
+        Component priceLine = priceText(newLock, creative);
+        if (priceLine != null) {
+            // the price, once, above the hotbar, whether or not the continuous reading is on; the
+            // reading waits PRICE_LINE_TICKS so it does not write over it (followLock)
+            player.displayClientMessage(Component.translatable("oresense.msg.locked_price", priceLine)
+                    .withStyle(ChatFormatting.LIGHT_PURPLE), true);
+        } else {
+            showReading(player, center, result.nearest(), result.nearestDistance(), hRange, vein.size(), largest);
+        }
+    }
+
+    /**
+     * A LARGEST scan that had to fall back to the closest vein (too many matching blocks to
+     * compare) says so once, in chat so the reading cannot write over it; the next scan that
+     * does not fall back ends the episode.
+     */
+    private static void noteFallback(ServerPlayer player, CompoundTag tag, boolean fallback) {
+        if (!fallback) {
+            tag.remove(PICK_FALLBACK_TAG);
+        } else if (!tag.getBoolean(PICK_FALLBACK_TAG)) {
+            tag.putBoolean(PICK_FALLBACK_TAG, true);
+            player.sendSystemMessage(Component.translatable("oresense.msg.pick.fallback").withStyle(ChatFormatting.YELLOW));
+        }
     }
 
     /**
@@ -379,18 +463,26 @@ public class OreSensorItem extends Item {
      */
     private static boolean followLock(ServerLevel level, ServerPlayer player, ItemStack sensor, CompoundTag lock,
                                       Set<Block> targets, boolean inHand, int hRange, int vRange) {
+        CompoundTag tag = sensor.getOrCreateTag();
         boolean paid = lock.getBoolean(LOCK_PAID);
-        if (!paid && getCharges(sensor) == 0 && !player.getAbilities().instabuild) {
-            // the charge this lock was taken on is gone (shards taken back out, or the lock was
-            // made in creative); it goes free rather than let its vein be mined for nothing
-            sensor.getOrCreateTag().remove(LOCK_TAG);
+        boolean creative = player.getAbilities().instabuild;
+        if (!ChargePolicy.keepsLock(paid, creative, lockPrice(lock), getCharges(sensor))) {
+            // the shards this lock was taken on are gone (taken back out, spent by PER_BLOCK, or
+            // the lock was made in creative); it goes free rather than let its vein be mined for nothing
+            tag.remove(LOCK_TAG);
+            return false;
+        }
+        if (!paid && pickChanged(tag, lock)) {
+            // the world's targetPick now asks for the other kind of vein: an unpaid lock goes
+            // free and this check scans again with the new choice
+            tag.remove(LOCK_TAG);
             return false;
         }
 
         long[] blocks = lock.getLongArray(LOCK_BLOCKS);
         List<BlockPos> remaining = remaining(level, blocks, targets);
         if (remaining.isEmpty()) {
-            release(level, sensor, paid, blocks, remaining, targets);
+            release(level, sensor, lock, paid, blocks, remaining, targets);
             return false;
         }
 
@@ -401,30 +493,34 @@ public class OreSensorItem extends Item {
             lock.putLong(LOCK_LOST, -1L);
         } else {
             long now = level.getGameTime();
-            long lostSince = lock.getLong(LOCK_LOST);
+            long lostSince = lock.contains(LOCK_LOST) ? lock.getLong(LOCK_LOST) : -1L;
             if (lostSince < 0) {
                 lock.putLong(LOCK_LOST, now);
-            } else if (now - lostSince > LOCK_GRACE_TICKS) {
-                release(level, sensor, paid, blocks, remaining, targets);
+            } else if (now - lostSince > lockGrace(lock)) {
+                release(level, sensor, lock, paid, blocks, remaining, targets);
                 if (inHand) miss(sensor, level, hRange); else endReading(sensor);
                 return true;
             }
         }
         hit(sensor, level, nearest, distance, hRange);
-        if (inHand) showReading(player, center, nearest, distance, hRange, remaining.size());
+        boolean priceLineShowing = priceText(lock, creative) != null
+                && level.getGameTime() - lock.getLong(LOCK_SINCE) < PRICE_LINE_TICKS;
+        if (inHand && !priceLineShowing) {
+            showReading(player, center, nearest, distance, hRange, remaining.size(), lock.getBoolean(LOCK_LARGEST));
+        }
         return true;
     }
 
     /**
-     * Lets the lock go. A vein already paid for is remembered in Ignore so the next scan does
-     * not lock it, and charge for it, again; an unpaid one goes free and may be locked again.
+     * Lets the lock go. With {@code ignore} (a vein already paid for, or a hand release) the vein
+     * is remembered in Ignore so the next scan does not lock it, and charge for it, again; without,
+     * it goes free and may be locked again. The paid vein's rest is flooded with the lock's own cap.
      */
-    /** Drops the lock; with {@code ignore} the vein is remembered so it is not locked again. */
-    private static void release(Level level, ItemStack sensor, boolean ignore, long[] blocks,
+    private static void release(Level level, ItemStack sensor, CompoundTag lock, boolean ignore, long[] blocks,
                                 List<BlockPos> remaining, Set<Block> targets) {
         CompoundTag tag = sensor.getOrCreateTag();
         tag.remove(LOCK_TAG);
-        if (ignore) addIgnore(tag, paidVeinAnchors(level, blocks, remaining, targets));
+        if (ignore) addIgnore(tag, paidVeinAnchors(level, blocks, remaining, targets, lockCap(lock)));
     }
 
     /**
@@ -441,46 +537,118 @@ public class OreSensorItem extends Item {
     // ---- charging ----
 
     /**
-     * The player broke a block (Forge's BreakEvent, server side). Every sensor they carry in
-     * the 36 main slots or the off hand whose unpaid lock holds that block spends its charge;
-     * the lock stays, paid, on the rest of the vein. Creative players pay nothing. A lock with
-     * no charge left to spend is let go instead.
+     * The player is breaking a block (Forge's BlockEvent.BreakEvent, server side); the event
+     * fires before the block is removed. The player's sensors in the 36 main slots or the off
+     * hand whose lock contains that block and still owes for it are charged by {@link
+     * ChargePolicy#chargeForBreak}: an unpaid PER_VEIN or PER_SIZE lock pays its price once and
+     * stays, paid, on the rest of the vein; a PER_BLOCK lock pays one shard for the block, and
+     * only one PER_BLOCK sensor pays per block. Creative players pay nothing. A lock that
+     * cannot pay, or a PER_BLOCK lock that just spent its last shard, is let go.
      */
     public static void onBlockBroken(ServerPlayer player, Level level, BlockPos pos) {
         long broken = pos.asLong();
         String dimension = dimensionId(level);
         Inventory inventory = player.getInventory();
-        boolean spent = false;
+        boolean creative = player.getAbilities().instabuild;
+        List<ItemStack> sensors = new ArrayList<>();
+        List<ChargePolicy.LockAtBreak> locks = new ArrayList<>();
         for (NonNullList<ItemStack> part : List.of(inventory.items, inventory.offhand)) {
             for (ItemStack stack : part) {
                 if (!(stack.getItem() instanceof OreSensorItem)) continue;
                 CompoundTag lock = lockOf(stack);
-                if (lock == null || lock.getBoolean(LOCK_PAID)) continue;
+                if (lock == null) continue;
+                ChargeMode mode = lockMode(lock);
+                boolean paid = lock.getBoolean(LOCK_PAID);
+                if (paid && ChargePolicy.paysOnce(mode)) continue;
                 if (!dimension.equals(getTargetDimension(stack))) continue;
                 if (!contains(lock.getLongArray(LOCK_BLOCKS), broken)) continue;
-                if (pay(player, stack, lock)) {
-                    spent = true;
-                    continue;
-                }
-                stack.getOrCreateTag().remove(LOCK_TAG);
+                sensors.add(stack);
+                locks.add(new ChargePolicy.LockAtBreak(mode, paid, lockPrice(lock), getCharges(stack)));
+            }
+        }
+        ChargePolicy.BreakCharge[] charges = ChargePolicy.chargeForBreak(locks, creative);
+        boolean chime = false;
+        for (int i = 0; i < charges.length; i++) {
+            ChargePolicy.BreakCharge charge = charges[i];
+            if (charge.equals(ChargePolicy.BreakCharge.NONE)) continue;
+            ItemStack stack = sensors.get(i);
+            CompoundTag tag = stack.getOrCreateTag();
+            CompoundTag lock = lockOf(stack);
+            if (charge.spend() > 0) {
+                int left = Mth.clamp(tag.getInt(CHARGES_TAG), 0, MAX_CHARGES) - charge.spend();
+                tag.putInt(CHARGES_TAG, left);
+                if (left > 0) tag.putBoolean(NO_CHARGE_TAG, false);
+                chime = true;
+            }
+            if (charge.markPaid()) {
+                lock.putBoolean(LOCK_PAID, true);
+                if (creative) chime = true;
+            }
+            if (charge.drop()) {
+                tag.remove(LOCK_TAG);
                 if (stack == player.getMainHandItem() || stack == player.getOffhandItem()) {
-                    record(stack, level, null, -1, Config.INSTANCE.horizontalRange.get(), true);
+                    noCharge(stack, level, Config.INSTANCE.horizontalRange.get(), locks.get(i).price());
                 } else {
                     endReading(stack);
                 }
             }
         }
-        if (spent) player.playNotifySound(SoundEvents.AMETHYST_CLUSTER_BREAK, SoundSource.PLAYERS, 1.0f, 1.0f);
+        // the shard chime only when shards are spent (or creative pays), never for a free lock
+        if (chime) player.playNotifySound(SoundEvents.AMETHYST_CLUSTER_BREAK, SoundSource.PLAYERS, 1.0f, 1.0f);
     }
 
-    /** Spends the lock's charge and marks it paid. False when there is no charge to spend. */
+    /**
+     * Pays a PER_VEIN or PER_SIZE lock's price and marks it paid (the sneak-use release next to
+     * its vein). False when the sensor holds fewer shards than the price; creative pays nothing.
+     */
     private static boolean pay(ServerPlayer player, ItemStack sensor, CompoundTag lock) {
         boolean creative = player.getAbilities().instabuild;
         int charges = getCharges(sensor);
-        if (charges == 0 && !creative) return false;
+        int price = lockPrice(lock);
+        if (!creative && !ChargePolicy.affordable(price, charges)) return false;
         lock.putBoolean(LOCK_PAID, true);
-        if (!creative) setCharges(sensor, charges - 1);
+        if (!creative && price > 0) {
+            CompoundTag tag = sensor.getOrCreateTag();
+            tag.putInt(CHARGES_TAG, charges - price);
+            if (charges > price) tag.putBoolean(NO_CHARGE_TAG, false);
+        }
         return true;
+    }
+
+    /** The lock's price; a 1.0.3 lock (no Price) cost one shard. */
+    private static int lockPrice(CompoundTag lock) {
+        return lock.contains(LOCK_PRICE, Tag.TAG_INT) ? Math.max(0, lock.getInt(LOCK_PRICE)) : 1;
+    }
+
+    /** The lock's charge mode; a 1.0.3 lock (no Mode) was per vein. */
+    private static ChargeMode lockMode(CompoundTag lock) {
+        return ChargeMode.fromName(lock.getString(LOCK_MODE));
+    }
+
+    /** The vein cap the lock's flood used; a 1.0.3 lock was flooded with 128. */
+    private static int lockCap(CompoundTag lock) {
+        return lock.contains(LOCK_CAP, Tag.TAG_INT) ? Math.max(1, lock.getInt(LOCK_CAP)) : LEGACY_VEIN_CAP;
+    }
+
+    /** Ticks the lock may stay out of range; a 1.0.3 lock had 200. */
+    private static int lockGrace(CompoundTag lock) {
+        return lock.contains(LOCK_GRACE, Tag.TAG_INT) ? Math.max(0, lock.getInt(LOCK_GRACE)) : LEGACY_LOCK_GRACE;
+    }
+
+    // ---- vein choice ----
+
+    /**
+     * True when the world's targetPick now asks for the other kind of vein than the lock was
+     * chosen as (the lock's Largest flag). A lock taken through the hit-limit fallback is a
+     * closest-vein lock made while LARGEST was asked for; while PickFallback says the last scan
+     * fell back, that is not a change (otherwise the lock would be let go and taken again every
+     * check).
+     */
+    private static boolean pickChanged(CompoundTag tag, CompoundTag lock) {
+        boolean largestNow = Config.INSTANCE.targetPick.get() == VeinPick.LARGEST;
+        boolean lockLargest = lock.getBoolean(LOCK_LARGEST);
+        if (largestNow && !lockLargest && tag.getBoolean(PICK_FALLBACK_TAG)) return false;
+        return largestNow != lockLargest;
     }
 
     // ---- veins and the Ignore list ----
@@ -531,12 +699,14 @@ public class OreSensorItem extends Item {
     /**
      * Anchors for a paid vein, from the part of it that is still there: the lock's remaining
      * blocks, or, once those are all mined, the rest of a vein too big for the lock (a flood
-     * stops at {@link #VEIN_CAP}, and a geode is bigger than that). A lock that holds fewer
-     * than VEIN_CAP blocks held the whole vein, so a mined-out one leaves nothing to remember.
+     * stops at the vein cap, and a geode can be bigger than that). A lock that holds fewer
+     * than its {@code cap} blocks held the whole vein, so a mined-out one leaves nothing to
+     * remember.
      */
-    private static long[] paidVeinAnchors(Level level, long[] blocks, List<BlockPos> remaining, Set<Block> targets) {
+    private static long[] paidVeinAnchors(Level level, long[] blocks, List<BlockPos> remaining, Set<Block> targets,
+                                          int cap) {
         if (!remaining.isEmpty()) return spread(remaining);
-        if (blocks.length < VEIN_CAP || targets.isEmpty()) return new long[0];
+        if (blocks.length < cap || targets.isEmpty()) return new long[0];
         for (long packed : blocks) {
             BlockPos mined = BlockPos.of(packed);
             for (int dx = -1; dx <= 1; dx++) {
@@ -544,7 +714,7 @@ public class OreSensorItem extends Item {
                     for (int dz = -1; dz <= 1; dz++) {
                         BlockPos next = mined.offset(dx, dy, dz);
                         if (OreScanner.matches(level, next, targets)) {
-                            return spread(OreScanner.vein(level, next, targets, VEIN_CAP));
+                            return spread(OreScanner.vein(level, next, targets, cap));
                         }
                     }
                 }
@@ -622,9 +792,14 @@ public class OreSensorItem extends Item {
 
     // ---- text ----
 
-    /** The optional action-bar reading (config showActionBar); {@code count} is blocks left in the vein. */
+    /**
+     * The optional action-bar reading (config showActionBar), in its 1.0.3 form; {@code count} is
+     * blocks left in the vein. A lock chosen as the largest vein says so up front, one word. The
+     * price and the fallback notice never go in here (they have their own lines, which do not
+     * depend on showActionBar).
+     */
     private static void showReading(ServerPlayer player, BlockPos center, BlockPos target, double distance,
-                                    int range, int count) {
+                                    int range, int count, boolean largest) {
         if (!Config.INSTANCE.showActionBar.get()) return;
         Component strength = Component.translatable(Signal.strength(distance, range));
         Component line;
@@ -637,9 +812,41 @@ public class OreSensorItem extends Item {
         } else {
             line = Component.translatable("oresense.msg.reading", strength, count);
         }
+        if (largest) line = Component.translatable("oresense.msg.reading_parts", Component.translatable("oresense.msg.pick.largest"), line);
         player.displayClientMessage(line.copy().withStyle(ChatFormatting.AQUA), true);
     }
 
+    /**
+     * What the lock costs, before its first block is mined (ChargePolicy.showsPrice): "N blocks,
+     * M shard(s)", or "1 shard per block"; null when there is nothing to announce (1.0.3's one
+     * shard per vein, free, paid, or a creative player).
+     */
+    @Nullable
+    private static Component priceText(CompoundTag lock, boolean creative) {
+        ChargeMode mode = lockMode(lock);
+        int price = lockPrice(lock);
+        if (!ChargePolicy.showsPrice(mode, price, lock.getBoolean(LOCK_PAID), creative)) return null;
+        if (mode == ChargeMode.PER_BLOCK) return Component.translatable("oresense.msg.price_per_block");
+        return Component.translatable("oresense.msg.price", lock.getLongArray(LOCK_BLOCKS).length, price);
+    }
+
+    /**
+     * The held lock's price for the hover tooltip (the client adds it, because only the client
+     * knows whether the player looking is in creative); null when there is nothing to announce.
+     */
+    @Nullable
+    public static Component lockPriceText(ItemStack sensor, boolean creative) {
+        CompoundTag lock = lockOf(sensor);
+        return lock == null ? null : priceText(lock, creative);
+    }
+
+    /**
+     * Short by default, details behind Shift: the sample, shards and any warning, followed by
+     * "Hold Shift" or the short usage details. ForgeHooksClient wraps tooltip lines at the
+     * screen's edge or an event-supplied maximum width. When ChargePolicy.showsPrice permits
+     * it, SensorClient.GameEvents.addLockPrice inserts the unpaid lock's price above the usage
+     * details. The sample is stored in NBT on 1.19.1; vanilla adds no contents line for it.
+     */
     @Override
     public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> tooltip, TooltipFlag flag) {
         ItemStack sample = getSample(stack);
@@ -647,10 +854,30 @@ public class OreSensorItem extends Item {
                 ? Component.translatable("oresense.tooltip.empty").withStyle(ChatFormatting.DARK_GRAY)
                 : Component.translatable("oresense.tooltip.tuned", sample.getHoverName()).withStyle(ChatFormatting.AQUA));
         int charges = getCharges(stack);
-        tooltip.add(charges > 0
-                ? Component.translatable("oresense.tooltip.charges", charges, MAX_CHARGES).withStyle(ChatFormatting.LIGHT_PURPLE)
-                : Component.translatable("oresense.tooltip.no_charge").withStyle(ChatFormatting.RED));
-        tooltip.add(Component.translatable("oresense.tooltip.usage").withStyle(ChatFormatting.DARK_GRAY));
+        if (charges > 0) {
+            tooltip.add(Component.translatable("oresense.tooltip.charges", charges, MAX_CHARGES).withStyle(ChatFormatting.LIGHT_PURPLE));
+        }
+        if (isNoCharge(stack)) {
+            // the server found a vein this sensor cannot pay for: say what it costs
+            tooltip.add(Component.translatable("oresense.tooltip.needs_shards", getNeededShards(stack)).withStyle(ChatFormatting.RED));
+        } else if (charges == 0) {
+            // neutral, not a warning: the client cannot see the server's price, and a free sensor
+            // (shardsPerVein 0) needs no shards; the red Needs line comes when a lock is refused
+            tooltip.add(Component.translatable("oresense.tooltip.no_charge").withStyle(ChatFormatting.GRAY));
+        }
+        if (!moreInfoHeld.getAsBoolean()) {
+            tooltip.add(Component.translatable("oresense.tooltip.more",
+                    Component.translatable("oresense.tooltip.more.key").withStyle(ChatFormatting.LIGHT_PURPLE))
+                    .withStyle(ChatFormatting.GRAY));
+            return;
+        }
+        if (sample.isEmpty()) {
+            tooltip.add(Component.translatable("oresense.tooltip.empty.more.1").withStyle(ChatFormatting.DARK_GRAY));
+            tooltip.add(Component.translatable("oresense.tooltip.empty.more.2").withStyle(ChatFormatting.DARK_GRAY));
+        }
+        tooltip.add(Component.translatable("oresense.tooltip.usage.scan").withStyle(ChatFormatting.DARK_GRAY));
+        tooltip.add(Component.translatable("oresense.tooltip.usage.lock").withStyle(ChatFormatting.DARK_GRAY));
+        tooltip.add(Component.translatable("oresense.tooltip.usage.release").withStyle(ChatFormatting.DARK_GRAY));
     }
 
     @Override
