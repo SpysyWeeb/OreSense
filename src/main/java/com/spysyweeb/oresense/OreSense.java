@@ -36,12 +36,16 @@ public class OreSense implements ModInitializer {
         Config.load();
         OreSenseNetwork.register();
         ResourceManagerHelper.get(PackType.SERVER_DATA).registerReloadListener(new SampleAliases());
-        ServerLifecycleEvents.START_DATA_PACK_RELOAD.register((server, resources) -> SampleResolver.invalidate());
+        // /reload also reads config/oresense.json again, before the data so the sample list sent
+        // at the end already follows a changed oresOnly
+        ServerLifecycleEvents.START_DATA_PACK_RELOAD.register((server, resources) -> {
+            Config.reload();
+            SampleResolver.invalidate();
+        });
         ServerLifecycleEvents.END_DATA_PACK_RELOAD.register((server, resources, success) -> {
             if (success) {
                 SampleResolver.invalidate();
-                KnownSamplesPacket packet = samples(server);
-                for (ServerPlayer player : server.getPlayerList().getPlayers()) OreSenseNetwork.send(player, packet);
+                syncSamples(server);
             }
         });
         ServerLifecycleEvents.SERVER_STOPPED.register(server -> SampleResolver.invalidate());
@@ -52,6 +56,15 @@ public class OreSense implements ModInitializer {
         PlayerBlockBreakEvents.AFTER.register((level, player, pos, state, blockEntity) -> {
             if (player instanceof ServerPlayer serverPlayer) OreSensorItem.onBlockBroken(serverPlayer, level, pos);
         });
+    }
+
+    /**
+     * Sends every player the server's sample list again: after /reload, and when the settings
+     * screen changes oresOnly in a single-player world (on the server thread).
+     */
+    public static void syncSamples(MinecraftServer server) {
+        KnownSamplesPacket packet = samples(server);
+        for (ServerPlayer player : server.getPlayerList().getPlayers()) OreSenseNetwork.send(player, packet);
     }
 
     private static KnownSamplesPacket samples(MinecraftServer server) {
