@@ -25,6 +25,13 @@ tasks.named('processResources', ProcessResources).configure {
     filesMatching(['META-INF/mods.toml', 'META-INF/neoforge.mods.toml', 'pack.mcmeta']) { expand properties }
 }
 tasks.withType(JavaCompile).configureEach { options.encoding = 'UTF-8' }
+
+// Unit tests cover only pure classes (no Minecraft types), so they port to every branch unchanged.
+dependencies {
+    testImplementation 'org.junit.jupiter:junit-jupiter:5.10.2'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher:1.10.2'
+}
+tasks.named('test', Test).configure { useJUnitPlatform() }
 publishing { publications { register('mavenJava', MavenPublication) { from components.java } } }
 
 // MIT asks that the notice accompany copies; ship it in the jar like the Fabric builds do.
