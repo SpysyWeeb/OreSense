@@ -21,6 +21,9 @@
     ],
     "client": [
       "com.spysyweeb.oresense.client.OreSenseClient"
+    ],
+    "modmenu": [
+      "com.spysyweeb.oresense.client.OreSenseModMenu"
     ]
   },
   "mixins": [
@@ -32,5 +35,8 @@
     "minecraft": "1.21.4",
     "java": ">=21"
   },
-  "accessWidener": "oresense.accesswidener"
+  "accessWidener": "oresense.accesswidener",
+  "suggests": {
+    "modmenu": "*"
+  }
 }
