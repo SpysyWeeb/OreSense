@@ -21,6 +21,9 @@
     ],
     "client": [
       "com.spysyweeb.oresense.client.OreSenseClient"
+    ],
+    "modmenu": [
+      "com.spysyweeb.oresense.client.OreSenseModMenu"
     ]
   },
   "mixins": [
@@ -31,5 +34,8 @@
     "fabric": ">=0.97.8",
     "minecraft": "1.20.5",
     "java": ">=21"
+  },
+  "suggests": {
+    "modmenu": "*"
   }
 }
