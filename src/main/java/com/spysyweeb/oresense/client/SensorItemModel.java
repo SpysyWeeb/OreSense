@@ -2,40 +2,57 @@ package com.spysyweeb.oresense.client;
 
 import com.mojang.serialization.MapCodec;
 import com.spysyweeb.oresense.OreSensorItem;
+import com.spysyweeb.oresense.client.skin.Skin;
+import com.spysyweeb.oresense.client.skin.Skins;
 import net.minecraft.client.multiplayer.ClientLevel;
+import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.renderer.item.ItemModel;
 import net.minecraft.client.renderer.item.ItemModelResolver;
 import net.minecraft.client.renderer.item.ItemStackRenderState;
 import net.minecraft.client.renderer.item.ModelRenderProperties;
-import net.minecraft.client.renderer.block.model.BakedQuad;
 import net.minecraft.client.resources.model.BlockModelRotation;
-import java.util.List;
 import net.minecraft.client.resources.model.ResolvableModel;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
+import org.joml.Vector3f;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
-/** Captures the original held-stack context before the engine defers drawing the sensor. */
+/** Captures the held-stack reading, the skin and the GUI sample before the sensor is rendered. */
 public record SensorItemModel(ModelRenderProperties properties, SensorRenderer renderer) implements ItemModel {
-    public record Snapshot(SensorClient.Reading reading, ItemStackRenderState sample) {}
+    public record Snapshot(SensorClient.Reading reading, Skin skin, ItemStackRenderState sample) {}
+    private static final Vector3f[] EXTENTS = {
+        new Vector3f(0, 0, 0.46875f), new Vector3f(0, 1, 0.46875f),
+        new Vector3f(1, 0, 0.46875f), new Vector3f(1, 1, 0.46875f),
+        new Vector3f(0, 0, 0.56f), new Vector3f(0, 1, 0.56f),
+        new Vector3f(1, 0, 0.56f), new Vector3f(1, 1, 0.56f)
+    };
 
     @Override
     public void update(ItemStackRenderState state, ItemStack stack, ItemModelResolver resolver,
                        ItemDisplayContext context, ClientLevel level, LivingEntity owner, int seed) {
-        state.setAnimated();
+        // the sensor reads itself and is drawn in the skin the client config chooses this frame
         SensorClient.Reading reading = SensorClient.read(stack, context);
+        Skin skin = Skins.current();
         ItemStackRenderState sample = new ItemStackRenderState();
-        // Never recurse through another sensor saved as a sample by a datapack or command.
         if (!reading.sample().isEmpty() && !(reading.sample().getItem() instanceof OreSensorItem)) {
             resolver.updateForTopItem(sample, reading.sample(), ItemDisplayContext.GUI, level, owner, seed);
         }
+        Snapshot snapshot = new Snapshot(reading, skin, sample);
+        // The GUI item atlas gives one slot per model identity: without these every sensor drawn in a frame would
+        // reuse the first one's picture. The snapshot holds this call's own sample state, so each sensor gets its
+        // own slot (vanilla's SpecialModelWrapper appends itself and its argument the same way).
+        state.appendModelIdentityElement(this);
+        state.appendModelIdentityElement(snapshot);
+        // The charge, sonar and needle must keep animating in the inventory item cache too.
+        state.setAnimated();
         ItemStackRenderState.LayerRenderState layer = state.newLayer();
-        layer.setupSpecialModel(renderer, new Snapshot(reading, sample));
+        layer.setupSpecialModel(renderer, snapshot);
+        layer.setExtents(() -> EXTENTS);
         properties.applyToLayer(layer, context);
-        layer.setExtents(SensorRenderer::extents);
     }
 
     public record Unbaked() implements ItemModel.Unbaked {
@@ -47,14 +64,16 @@ public record SensorItemModel(ModelRenderProperties properties, SensorRenderer r
             SensorClient.layers().forEach(resolver::markDependency);
         }
         @Override public ItemModel bake(ItemModel.BakingContext context) {
-            Map<ResourceLocation, List<BakedQuad>> models = new HashMap<>();
             var baker = context.blockModelBaker();
+            Map<ResourceLocation, List<BakedQuad>> models = new HashMap<>();
             for (ResourceLocation layer : SensorClient.layers()) {
                 var model = baker.getModel(layer);
-                models.put(layer, model.bakeTopGeometry(model.getTopTextureSlots(), baker, BlockModelRotation.X0_Y0).getAll());
+                models.put(layer, model.bakeTopGeometry(model.getTopTextureSlots(), baker,
+                        BlockModelRotation.X0_Y0).getAll());
             }
             var display = baker.getModel(DISPLAY);
-            return new SensorItemModel(ModelRenderProperties.fromResolvedModel(baker, display, display.getTopTextureSlots()), new SensorRenderer(models));
+            return new SensorItemModel(ModelRenderProperties.fromResolvedModel(baker, display, display.getTopTextureSlots()),
+                    new SensorRenderer(models));
         }
     }
 }
