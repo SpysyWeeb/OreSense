@@ -1,0 +1,10 @@
+{
+  "scanning": {
+    "horizontalRange": 48,
+    "verticalRange": 24,
+    "scanIntervalTicks": 10,
+    "showDirection": false,
+    "showActionBar": true,
+    "oresOnly": false
+  }
+}
