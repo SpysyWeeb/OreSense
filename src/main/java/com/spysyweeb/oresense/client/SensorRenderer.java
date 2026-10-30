@@ -1,57 +1,57 @@
 package com.spysyweeb.oresense.client;
 
 import com.mojang.blaze3d.vertex.PoseStack;
-import com.spysyweeb.oresense.OreSensorItem;
-import com.mojang.blaze3d.vertex.VertexConsumer;
-import net.minecraft.Util;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
-import net.minecraft.client.renderer.ItemBlockRenderTypes;
-import net.minecraft.client.renderer.LightTexture;
-import net.minecraft.client.renderer.MultiBufferSource;
-import net.minecraft.client.renderer.block.model.BakedQuad;
-import net.minecraft.client.renderer.entity.ItemRenderer;
-import net.minecraft.client.resources.model.BakedModel;
-import net.minecraft.client.resources.model.ModelManager;
-import net.minecraft.core.Direction;
-import net.minecraft.util.Mth;
-import net.minecraft.util.RandomSource;
-import net.minecraft.world.item.ItemDisplayContext;
-import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.Items;
 import net.minecraftforge.client.model.IQuadTransformer;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
+import org.joml.Vector4f;
+import com.spysyweeb.oresense.client.skin.LayerSkin;
+import com.spysyweeb.oresense.client.skin.Skin;
+import com.spysyweeb.oresense.client.skin.Skins;
+import com.mojang.blaze3d.vertex.VertexConsumer;
+import net.minecraft.Util;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
+import net.minecraft.client.resources.model.ModelResourceLocation;
+import net.minecraft.client.renderer.ItemBlockRenderTypes;
+import net.minecraft.client.renderer.MultiBufferSource;
+import net.minecraft.client.renderer.block.model.BakedQuad;
+import net.minecraft.world.item.ItemDisplayContext;
+import net.minecraft.client.renderer.entity.ItemRenderer;
+import net.minecraft.client.resources.model.BakedModel;
+import net.minecraft.core.Direction;
+import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 import java.util.ArrayList;
 import java.util.List;
+import net.minecraft.util.RandomSource;
 
 /**
- * Draws the 16x16 dial as stacked layers (base, sonar ring, charge gauge, needle tail and tip, lit
- * lamp), then the sample sitting in the window at the centre so you can see what it is hunting for.
+ * Draws the dial in the skin the client config chooses (read every frame), then the sample sitting
+ * in the window at the centre so you can see what it is hunting for. The skin draws the face; this
+ * class owns what is the same for every skin: the shared pulse clock ({@link #lockedPhase}), the
+ * pulsingLights setting, and the sample decal in the window ({@link #WINDOW_X}, {@link #WINDOW_Y},
+ * {@link #WINDOW_SIZE}). The settings screen's preview tiles use the same two.
  */
 public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
-    // locked needle glow: one pulse per PULSE_NEAR_MS on the target, PULSE_NEAR_MS + PULSE_FAR_MS
-    // at the edge of the scan range, linear in between
-    private static final double PULSE_NEAR_MS = 350.0;
-    private static final double PULSE_FAR_MS = 1050.0;
-    private static final long SONAR_MS = 1600L;   // one sweep of all the rings
-    private static final long EMPTY_MS = 1400L;   // NO_CHARGE: the red gauge's slow pulse
-    private static final long CHARGE_PULSE_MS = 2800L;
-    private static final float CHARGE_BRIGHTNESS_LOW = 0.75f;
-    private static final float CHARGE_BRIGHTNESS_SWING = 0.25f;
-
-    // NO_CHARGE alpha of the red gauge row swings from EMPTY_ALPHA_LOW to EMPTY_ALPHA_LOW + EMPTY_ALPHA_SWING
-    private static final float EMPTY_ALPHA_LOW = 0.35f;
-    private static final float EMPTY_ALPHA_SWING = 0.65f;
-    // Needle tints. The needle and tail frames are baked white, so one tint colours the whole
-    // stroke: LOCKED red times the pulse brightness, with a light tail; a locked vein out of
-    // range holds a steady dim red instead of pulsing; every other state rests grey, tip and tail
-    private static final float[] LOCK_TIP = {0.93f, 0.14f, 0.10f};
-    private static final float[] LOCK_TAIL = {0.85f, 0.85f, 0.85f};
-    private static final float[] LOST_TIP = {0.5f, 0.08f, 0.06f};
-    private static final float[] REST = {0.62f, 0.62f, 0.66f};
+    /**
+     * The dial's grid, 16 by 16 like any item; the window rect below is in these units, from the top
+     * left, whatever a skin's texture size (a 32 px skin has 2 texels per unit).
+     */
+    public static final int DIAL_PIXELS = 16;
+    /** Left edge of the window the sample sits in (pixels 6..9 of 16: exactly in the middle). */
+    public static final int WINDOW_X = 6;
+    /** Top edge of the window. */
+    public static final int WINDOW_Y = 6;
+    /** The window is WINDOW_SIZE by WINDOW_SIZE dial pixels. */
+    public static final int WINDOW_SIZE = 4;
+    /** The BLOCK vertex format's int offsets; Skin writes its layers with them as well. */
+    public static final int VERTEX_STRIDE = IQuadTransformer.STRIDE;
+    public static final int POSITION_OFFSET = IQuadTransformer.POSITION;
+    public static final int COLOR_OFFSET = IQuadTransformer.COLOR;
+    public static final int UV_OFFSET = IQuadTransformer.UV0;
 
     // Phase (0..1) of the locked needle pulse. Its period follows the distance, which the server
     // updates once per scan, so the phase is integrated (phase += elapsed / period) instead of
@@ -68,7 +68,10 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
     // makes the isometric cube, |x| <= 0.442 and |y| <= 0.492 in drawFlatIcon's worked example,
     // as big as a flat item), so at 0.25 it spans 3.5 x 3.9 of the 4 px and stays off the needle
     // root and tail pixels next to the window and off the gauge row under it
-    private static final float SAMPLE_SCALE = 0.25f;
+    private static final float SAMPLE_SCALE = WINDOW_SIZE / (float) DIAL_PIXELS;
+    // the window's centre on the item's plane (x right, y up, 0..1): 0.5, 0.5
+    private static final float WINDOW_CENTRE_X = (WINDOW_X + WINDOW_SIZE / 2f) / DIAL_PIXELS;
+    private static final float WINDOW_CENTRE_Y = 1f - (WINDOW_Y + WINDOW_SIZE / 2f) / DIAL_PIXELS;
     // where the flat icon sits: the dial's front face is the generated model's z 8.5/16 = 0.53125,
     // and the icon keeps at most +-0.007 of depth (0.25 x 0.539 x DECAL_DEPTH), so 0.542 puts all
     // of it just in front of the face. Any further out and perspective slides it off the lens
@@ -87,14 +90,21 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
         return instance;
     }
 
+    /**
+     * The sensor item's renderer (Forge's IClientItemExtensions.getCustomRenderer): {@code stack}'s reading
+     * drawn in the current skin, then the sample in the window. {@code stack} picks the render type.
+     */
     @Override
     public void renderByItem(ItemStack stack, ItemDisplayContext context, PoseStack pose,
                              MultiBufferSource buffer, int light, int overlay) {
+        SensorClient.Reading reading = SensorClient.read(stack, context);
+        Skin skin = Skins.current();
         Minecraft mc = Minecraft.getInstance();
         BakedModel sensorModel = mc.getItemRenderer().getModel(stack, mc.level, null, 0);
         if (!(sensorModel instanceof SensorModel.Baked models)) return;
-        SensorClient.Reading reading = SensorClient.read(stack, context);
         long now = Util.getMillis();              // one clock for every sensor on screen
+        boolean pulsingLights = !ClientConfig.SPEC.isLoaded() || ClientConfig.INSTANCE.pulsingLights.get();
+        Skin.Frame frame = new Skin.Frame(now, lockedPhase(reading, now), pulsingLights, light, overlay);
 
         // ItemRenderer has already applied the display transform and the -0.5 model shift, so
         // this is model space: x,y in [0,1], every layer's front face at z 0.53. All layers go
@@ -104,50 +114,7 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
         // (BufferBuilder sorts translucent quads by the midpoint of vertices 0 and 2, stable for
         // ties), so each layer lands on top of the one before it.
         VertexConsumer vc = buffer.getBuffer(ItemBlockRenderTypes.getRenderType(stack));
-
-        drawLayer(pose, vc, models.getModel(SensorClient.BASE), 1f, 1f, 1f, 1f, light, overlay);
-
-        if (reading.state() == SensorClient.State.SEARCHING) {
-            float p = Math.floorMod(now, SONAR_MS) / (float) SONAR_MS;
-            int ring = (int) (p * SensorClient.SONAR_RINGS);
-            if (ring > 0) {
-                drawLayer(pose, vc, models.getModel(SensorClient.sonar(ring - 1)),
-                        1f, 1f, 1f, 0.30f * (1f - p), LightTexture.FULL_BRIGHT, overlay);
-            }
-            drawLayer(pose, vc, models.getModel(SensorClient.sonar(ring)),
-                    1f, 1f, 1f, 0.85f * (1f - p), LightTexture.FULL_BRIGHT, overlay);
-        }
-
-        // the gauge before the needle: a needle pointing down crosses the gauge row under the
-        // window and must stay one unbroken stroke over it
-        drawGauge(pose, vc, models, reading, now, overlay);
-
-        // the frame nearest the spring's angle: frame i points 11.25 degrees * i clockwise from up,
-        // the same sense as the angle (positive = the target is to the player's right)
-        int frame = Math.floorMod(Math.round(reading.angle() * SensorClient.NEEDLE_FRAMES), SensorClient.NEEDLE_FRAMES);
-        BakedModel tip = models.getModel(SensorClient.needle(frame));
-        BakedModel tail = models.getModel(SensorClient.tail(frame));
-        if (reading.state() == SensorClient.State.LOCKED) {
-            drawLayer(pose, vc, tail, LOCK_TAIL[0], LOCK_TAIL[1], LOCK_TAIL[2], 1f, light, overlay);
-            float lampB;                      // the lamps pulse in step with the needle tip
-            if (reading.lost()) {
-                drawLayer(pose, vc, tip, LOST_TIP[0], LOST_TIP[1], LOST_TIP[2], 1f, LightTexture.FULL_BRIGHT, overlay);
-                lampB = 0.55f;                // steady and dim, like the lost tip
-            } else {
-                double phase = advancePulse(now, PULSE_NEAR_MS + PULSE_FAR_MS * (1.0 - reading.closeness()));
-                float b = (float) (0.55 + 0.45 * (0.5 + 0.5 * Math.sin(2.0 * Math.PI * phase)));
-                drawLayer(pose, vc, tip, LOCK_TIP[0] * b, LOCK_TIP[1] * b, LOCK_TIP[2] * b, 1f, LightTexture.FULL_BRIGHT, overlay);
-                lampB = b;
-            }
-            if (reading.vertical() != SensorClient.Vertical.LEVEL) {
-                BakedModel lamp = models.getModel(reading.vertical() == SensorClient.Vertical.ABOVE
-                        ? SensorClient.LAMP_UP : SensorClient.LAMP_DOWN);
-                drawLayer(pose, vc, lamp, lampB, lampB, lampB, 1f, LightTexture.FULL_BRIGHT, overlay);
-            }
-        } else {
-            drawLayer(pose, vc, tail, REST[0], REST[1], REST[2], 1f, light, overlay);
-            drawLayer(pose, vc, tip, REST[0], REST[1], REST[2], 1f, light, overlay);
-        }
+        skin.render(pose, vc, id -> models.getModel(ModelResourceLocation.inventory(id)), reading, frame);
 
         ItemStack sample = reading.sample();
         if (sample.isEmpty()) return;
@@ -157,17 +124,17 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
         // 1/16 thick whose front face floats off the lens under perspective. Only models with no
         // quads keep the plain GUI render: builtin/entity models (chest, banner, skull, bed,
         // trident...) draw through a BEWLR, and ItemRenderer.render swaps the spyglass's in-hand
-        // model for its flat inventory model in GUI (ItemRenderer.java:105-112).
+        // model for its flat inventory model in GUI.
         BakedModel model = mc.getItemRenderer().getModel(sample, mc.level, null, 0);
         boolean flat = !model.isCustomRenderer() && !sample.is(Items.SPYGLASS);
         pose.pushPose();
-        pose.translate(0.5f, 0.5f, flat ? DECAL_Z : 0.56f);   // lens centre
+        pose.translate(WINDOW_CENTRE_X, WINDOW_CENTRE_Y, flat ? DECAL_Z : 0.56f);   // lens centre
         pose.scale(SAMPLE_SCALE, SAMPLE_SCALE, SAMPLE_SCALE);
         if (flat) {
-            drawFlatIcon(pose, buffer, mc, sample, model, light, overlay);
+            drawFlatIcon(pose, buffer, sample, model, light, overlay);
         } else {
-            mc.getItemRenderer().renderStatic(sample, ItemDisplayContext.GUI, light, overlay,
-                    pose, buffer, mc.level, 0);
+            mc.getItemRenderer().renderStatic(null, sample, ItemDisplayContext.GUI, false,
+                    pose, buffer, mc.level, light, overlay, 0);
         }
         pose.popPose();
     }
@@ -176,19 +143,16 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
      * Draws a 3D model the way its inventory icon looks, pressed onto one plane, so a block sample
      * sits in the glass like a picture instead of a cube poking out of the dial.
      * <p>
-     * Each quad goes through the model's own GUI transform, built by the engine's own
-     * {@code ItemTransform.apply} (translate, then {@code rotationXYZ}, then scale; Forge's
-     * right_rotation after that, identity for vanilla), after the same -0.5 centring
-     * ItemRenderer.render does. Then z is pressed to {@code DECAL_DEPTH} of itself, so every face
-     * lies on the socket plane as far as the eye can tell, while the depth test still sees which
-     * part of the model is nearer.
+     * Each quad uses the model's GUI ItemTransform.apply and the model-space centring performed
+     * below. Its transformed z is then scaled by {@code DECAL_DEPTH}, preserving depth ordering
+     * while pressing the icon onto the socket plane.
      * A face whose turned normal has z <= 0 faces away from the viewer and is skipped, which leaves
      * exactly the faces the icon shows, and each keeps the icon's fixed shading baked into its
      * colour: top (normal y > 0.5) 1.0, left-facing side (x < 0) 0.8, the other side 0.6. The
      * decal's normal is the dial's own front normal, so it is lit exactly like the dial face.
      * <p>
      * Worked through for a vanilla cube (block/block GUI transform: rotation (30, 225, 0),
-     * translation 0, scale 0.625). rotationXYZ(30, 225, 0) = Rx(30)*Ry(225): turn about y, then x.
+     * translation 0, scale 0.625). The quaternion gives Rx(30)*Ry(225): turn about y, then x.
      * <pre>
      *   Ry(225): x' = -0.7071(x + z)   y' = y                  z' = 0.7071(x - z)
      *   Rx(30):  x' = x                y' = 0.8660y - 0.5000z  z' = 0.5000y + 0.8660z
@@ -224,7 +188,7 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
      * step's top (no cullface, so in the unculled list, drawn last), painted over the upper step's
      * front.
      */
-    private static void drawFlatIcon(PoseStack ps, MultiBufferSource buffer, Minecraft mc,
+    private static void drawFlatIcon(PoseStack ps, MultiBufferSource buffer,
                                      ItemStack sample, BakedModel model, int light, int overlay) {
         PoseStack gui = new PoseStack();
         model.getTransforms().getTransform(ItemDisplayContext.GUI).apply(false, gui);
@@ -245,10 +209,14 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
         // atlas, which is where the quads' baked UVs point
         VertexConsumer vc = buffer.getBuffer(ItemBlockRenderTypes.getRenderType(sample));
         PoseStack.Pose dial = ps.last();
-        Vector3f n = new Vector3f(), p = new Vector3f();
+        Vector3f n = new Vector3f();
+        Vector4f p = new Vector4f();
+        Minecraft mc = Minecraft.getInstance();
         for (BakedQuad quad : quads) {
             Direction face = quad.getDirection();
-            turn.transform(face.getStepX(), face.getStepY(), face.getStepZ(), n).normalize();
+            n.set(face.getStepX(), face.getStepY(), face.getStepZ());
+            n.mul(turn);
+            n.normalize();
             if (n.z() <= 0f) continue;                // faces away from the viewer
             // a face looking straight at the viewer (a flat item's front) is lit in full; the
             // three faces of a block's isometric icon get the inventory look: top, left, right
@@ -258,18 +226,20 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
             float g = (tint >> 8 & 255) / 255f * shade;
             float b = (tint & 255) / 255f * shade;
 
-            // vertex data is DefaultVertexFormat.BLOCK; IQuadTransformer holds its int offsets
+            // Vertex data uses DefaultVertexFormat.BLOCK; offsets above are measured in ints.
             int[] v = quad.getVertices();
-            for (int o = 0; o < v.length; o += IQuadTransformer.STRIDE) {
-                place.transformPosition(
-                        Float.intBitsToFloat(v[o + IQuadTransformer.POSITION]) - 0.5f,
-                        Float.intBitsToFloat(v[o + IQuadTransformer.POSITION + 1]) - 0.5f,
-                        Float.intBitsToFloat(v[o + IQuadTransformer.POSITION + 2]) - 0.5f, p);
-                int c = v[o + IQuadTransformer.COLOR];  // R,G,B,A bytes, R in the low byte
+            for (int o = 0; o < v.length; o += VERTEX_STRIDE) {
+                // w=1 keeps the model's GUI translation; this is a position, not a direction.
+                p.set(
+                        Float.intBitsToFloat(v[o + POSITION_OFFSET]) - 0.5f,
+                        Float.intBitsToFloat(v[o + POSITION_OFFSET + 1]) - 0.5f,
+                        Float.intBitsToFloat(v[o + POSITION_OFFSET + 2]) - 0.5f, 1f);
+                p.mul(place);
+                int c = v[o + COLOR_OFFSET];  // R,G,B,A bytes, R in the low byte
                 vc.addVertex(dial.pose(), p.x(), p.y(), p.z() * DECAL_DEPTH)  // pressed onto the socket
                         .setColor(r * (c & 255) / 255f, g * (c >> 8 & 255) / 255f, b * (c >> 16 & 255) / 255f, 1f)
-                        .setUv(Float.intBitsToFloat(v[o + IQuadTransformer.UV0]),
-                            Float.intBitsToFloat(v[o + IQuadTransformer.UV0 + 1]))
+                        .setUv(Float.intBitsToFloat(v[o + UV_OFFSET]),
+                            Float.intBitsToFloat(v[o + UV_OFFSET + 1]))
                         .setOverlay(overlay)
                         .setLight(light)
                         .setNormal(dial, 0f, 0f, 1f);
@@ -278,35 +248,14 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
     }
 
     /**
-     * The charge gauge, the row of four cells under the window. The base holds all four unlit
-     * (dark amethyst), so only lit cells are drawn. Stored charge is shown even when dormant
-     * or without a sample: ceil(charges * 4 / 64) cells lit from the left end, 16 shards each,
-     * with the filled pixels gently pulsing between 75% and full brightness.
-     * One shard already lights a cell, so an unlit gauge always means empty. NO_CHARGE shows the
-     * red row in a slow pulse (the server found ore but the sensor has no amethyst to lock with).
+     * The shared phase (0..1) of the locked needle's pulse for {@code reading} at {@code now}: a
+     * LOCKED reading in range advances it at a period that follows its closeness (PULSE_NEAR_MS on
+     * the target, PULSE_NEAR_MS + PULSE_FAR_MS at the edge of the range); any other reading leaves
+     * it alone and gets 0.
      */
-    private static void drawGauge(PoseStack pose, VertexConsumer vc, SensorModel.Baked models,
-                                  SensorClient.Reading reading, long now, int overlay) {
-        switch (reading.state()) {
-            case NO_CHARGE -> {
-                double phase = Math.floorMod(now, EMPTY_MS) / (double) EMPTY_MS;
-                float a = (float) (EMPTY_ALPHA_LOW
-                        + EMPTY_ALPHA_SWING * (0.5 + 0.5 * Math.sin(2.0 * Math.PI * phase)));
-                drawLayer(pose, vc, models.getModel(SensorClient.EMPTY), 1f, 1f, 1f, a, LightTexture.FULL_BRIGHT, overlay);
-            }
-            case DORMANT, SEARCHING, LOCKED -> {
-                int max = OreSensorItem.MAX_CHARGES;
-                int cells = SensorClient.CHARGE_CELLS;
-                int lit = (Mth.clamp(reading.charges(), 0, max) * cells + max - 1) / max;
-                double phase = Math.floorMod(now, CHARGE_PULSE_MS) / (double) CHARGE_PULSE_MS;
-                float brightness = (float) (CHARGE_BRIGHTNESS_LOW
-                        + CHARGE_BRIGHTNESS_SWING * (0.5 + 0.5 * Math.sin(2.0 * Math.PI * phase)));
-                for (int i = 0; i < lit; i++) {
-                    drawLayer(pose, vc, models.getModel(SensorClient.charge(i)),
-                            brightness, brightness, brightness, 1f, LightTexture.FULL_BRIGHT, overlay);
-                }
-            }
-        }
+    public static double lockedPhase(SensorClient.Reading reading, long now) {
+        return reading.state() == SensorClient.State.LOCKED && !reading.lost()
+                ? advancePulse(now, LayerSkin.PULSE_NEAR_MS + LayerSkin.PULSE_FAR_MS * (1.0 - reading.closeness())) : 0;
     }
 
     /** Advances the shared locked-needle pulse to {@code now} at the given period; returns its phase. */
@@ -314,20 +263,5 @@ public class SensorRenderer extends BlockEntityWithoutLevelRenderer {
         if (pulseClock != Long.MIN_VALUE) pulsePhase = (pulsePhase + (now - pulseClock) / periodMs) % 1.0;
         pulseClock = now;
         return pulsePhase;
-    }
-
-    /**
-     * Writes one item/generated layer straight into {@code vc} with our own tint and alpha
-     * (renderModelLists would route the tint through ItemColors and has no alpha).
-     */
-    private static void drawLayer(PoseStack ps, VertexConsumer vc, BakedModel model,
-                                  float r, float g, float b, float a, int light, int overlay) {
-        PoseStack.Pose pose = ps.last();
-        RandomSource rand = RandomSource.create(42L);
-        float[] bright = {1f, 1f, 1f, 1f};
-        int[] lights = {light, light, light, light};
-        for (Direction d : Direction.values())
-            for (BakedQuad q : model.getQuads(null, d, rand)) vc.putBulkData(pose, q, bright, r, g, b, a, lights, overlay, false);
-        for (BakedQuad q : model.getQuads(null, null, rand)) vc.putBulkData(pose, q, bright, r, g, b, a, lights, overlay, false);
     }
 }
